@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using GPSoftware.Core.Dtos;
+using System.Reflection;
 
 namespace GPSoftware.Core.Extensions {
 
@@ -10,16 +11,15 @@ namespace GPSoftware.Core.Extensions {
     public static class CloneExtension {
 
         /// <summary>
-        ///     Clone an an object into a new object of the same type
+        ///     Clone an object into a new object of the same type.
         /// </summary>
-        /// <returns></returns>
         public static TDto Clone<TDto>(this TDto source)
             where TDto : IMyDto, new() {
             return source.Clone(new TDto());
         }
 
         /// <summary>
-        ///     Clone an an object into a new object of another type. ONLY SAME properties will be copied.
+        ///     Clone an object into a new object of another type. ONLY SAME properties will be copied.
         /// </summary>
         public static TDtoDest Clone<TDtoSource, TDtoDest>(this TDtoSource source)
             where TDtoSource : IMyDto
@@ -28,31 +28,54 @@ namespace GPSoftware.Core.Extensions {
         }
 
         /// <summary>
-        ///     Copy an an object into a object of another type. ONLY SAME properties will be copied.
+        ///     Copy an object into a object of another type. ONLY SAME properties will be copied.
+        ///     REMOVED 'new()' constraint here to allow recursion on Interfaces.
         /// </summary>
         public static TDtoDest Clone<TDtoSource, TDtoDest>(this TDtoSource source, TDtoDest dest)
             where TDtoSource : IMyDto
-            where TDtoDest : IMyDto, new() {
+            where TDtoDest : IMyDto {
 
             var srcProperties = source.GetType().GetProperties();
             var destProperties = dest.GetType().GetProperties();
             foreach (var srcProp in srcProperties) {
-                var destPrp = destProperties.FirstOrDefault(dp => dp.CanWrite && srcProp.Name.Equals(dp.Name) && srcProp.PropertyType.Equals(dp.PropertyType));
+                // Find matching property in destination
+                var destPrp = destProperties.FirstOrDefault(dp => 
+                    dp.CanWrite && 
+                    dp.Name.Equals(srcProp.Name) && 
+                    dp.PropertyType.IsAssignableFrom(srcProp.PropertyType)); // Slightly more robust check
+
+                // Strict equality check (as in your original code)
+                if (destPrp == null && srcProp.PropertyType.IsClass) {
+                     destPrp = destProperties.FirstOrDefault(dp => 
+                        dp.CanWrite && 
+                        dp.Name.Equals(srcProp.Name) && 
+                        dp.PropertyType.Equals(srcProp.PropertyType));
+                }
+
                 if (destPrp == null) continue;
 
                 var srcValue = srcProp.GetValue(source);
 
+                if (srcValue == null) {
+                    destPrp.SetValue(dest, null);
+                    continue;
+                }
+
                 // DEEP CLONE LOGIC
-                // If the value is not null and implements IMyDto, we must clone it recursively
+                // Check if the property is a DTO (implements IMyDto)
                 if (srcValue is IMyDto srcDto) {
-                    // Create a new instance of the property type
+                    // Create a new instance of the concrete type of the destination property
+                    // We can use Activator because we know the property type is a concrete class at runtime
                     var destDto = (IMyDto)Activator.CreateInstance(destPrp.PropertyType);
-                    // Recursive call using the existing logic
-                    CloneExtension.Clone(srcDto, destDto);                    
+
+                    // Recursive call. 
+                    // This now works because the 3rd overload no longer requires 'new()' constraint on the interface types.
+                    CloneExtension.Clone(srcDto, destDto);
+
                     destPrp.SetValue(dest, destDto);
-                } 
+                }
                 else {
-                    // Shallow copy for simple types (int, string, etc.)
+                    // Shallow copy for simple types / value types
                     destPrp.SetValue(dest, srcValue);
                 }
             }

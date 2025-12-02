@@ -1,11 +1,10 @@
 <Project>
 	<PropertyGroup>
-		<VersionPrefix>3.2.2</VersionPrefix>
+		<VersionPrefix>3.2.3</VersionPrefix>
 		
 		<PackageReleaseNotes>
-            - Fixed the validation rule for the email address.
-            - Moved source code to GitHub
-            - Refactored project structure
+            - Fixed the deep copy.
+            - Optimized some extension methods.
         </PackageReleaseNotes>
 	</PropertyGroup>
 </Project>
