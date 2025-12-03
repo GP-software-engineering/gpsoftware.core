@@ -1,0 +1,67 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<Import Project="Version.props" />
+	
+	<PropertyGroup>
+		<TargetFrameworks>net8.0;net6.0;netstandard2.0</TargetFrameworks>
+		<ImplicitUsings>disable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<LangVersion>10.0</LangVersion>
+		<RootNamespace>GPSoftware.Core</RootNamespace>
+		
+		<Copyright>(c) 2018-25 GP software engineering s.r.l.</Copyright>
+		<Title>A multi-platform simple library of useful utilities</Title>
+		<Description>
+			A multi-platform simple library of useful utilities for calculating checksums, execute encryption and hashing, connect to smtp servers, and lots of extension methods for DateTime, Strings, Collections, Enums, etc.
+		</Description>
+
+		<AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
+
+		<RepositoryUrl>https://github.com/GP-software-engineering/gpsoftware.core.git</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageProjectUrl>https://github.com/GP-software-engineering/gpsoftware.core</PackageProjectUrl>
+
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<EmbedUntrackedSources>true</EmbedUntrackedSources>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+
+		<Authors>GP software engineering</Authors>
+		<Company>GP software engineering s.r.l.</Company>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageIcon>package_icon.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+	</PropertyGroup>
+
+	<ItemGroup Condition="$(TargetFramework.StartsWith('netstandard'))">
+		<PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Remove="deploy_corelib.cmd" />
+		<None Remove="deploy_lib.cmd" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="..\README.md">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="package_icon.png">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+		<PackageReference Include="PolySharp" Version="1.15.0">
+		  <PrivateAssets>all</PrivateAssets>
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+
+</Project>

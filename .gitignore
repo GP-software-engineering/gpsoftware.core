@@ -1,0 +1,74 @@
+## ============================================================================
+## Visual Studio & .NET Standard Ignores
+## ============================================================================
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio 2015/2017/2019/2022 cache/options directory
+.vs/
+# Visual Studio Code
+.vscode/
+
+## ============================================================================
+## Build Results
+## ============================================================================
+# Ignore bin and obj directories recursively (matches src/Project/bin, test/Project/bin, etc.)
+[Bb]in/
+[Oo]bj/
+
+# Debug files
+*.pdb
+
+## ============================================================================
+## NuGet
+## ============================================================================
+# NuGet Packages that might be downloaded locally
+*.nupkg
+*.snupkg
+# The packages folder can be ignored because of PackageReference
+packages/
+# Lock file (optional, usually ignored for libraries, kept for apps)
+project.lock.json
+project.assets.json
+# NuGet restore folder
+_nc_output/
+
+## ============================================================================
+## Tests & Coverage
+## ============================================================================
+# MSTest / VSTest generated files
+TestResults/
+*.trx
+# Coverlet / Coverage files
+coverage.json
+*.cobertura.xml
+*.opencover.xml
+
+## ============================================================================
+## OS Generated Files (Junk)
+## ============================================================================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+# Mac
+.DS_Store
+
+## ============================================================================
+## GPSoftware Specifics
+## ============================================================================
+# Ignore local deployment scripts if any (except the guide)
+# *.cmd
+# *.bat
+
+# Do NOT ignore these important files (Explicit Allow)
+!package_icon.png
+!LICENSE
+!.editorconfig
+!README.md
+!DeploymentGuide.md

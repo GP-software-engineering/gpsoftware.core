@@ -1,0 +1,10 @@
+<Project>
+	<PropertyGroup>
+		<VersionPrefix>3.2.3</VersionPrefix>
+		
+		<PackageReleaseNotes>
+            - Fixed the deep copy.
+            - Optimized some extension methods.
+        </PackageReleaseNotes>
+	</PropertyGroup>
+</Project>
