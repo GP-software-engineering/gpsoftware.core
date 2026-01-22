@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using GPSoftware.Core.Validation;
 
 namespace GPSoftware.Core.Crypto {
 
@@ -9,7 +10,7 @@ namespace GPSoftware.Core.Crypto {
     ///     Implements the Advanced Encryption Standard (AES) symmetric algorithm.
     ///     It is able to work both with a fixed initiation vector (IV) and with a random one, depending by the constructor invoked.
     /// </summary>
-    /// <remarks>This class caches the aes encryptor to improve performances and it is thread-safe</remarks>
+    /// <remarks>This class caches the AES encryptor to improve performances and it is thread-safe</remarks>
     public class AesProvider : IEncryptionProvider, IDisposable {
 
         /// <summary>
@@ -26,6 +27,11 @@ namespace GPSoftware.Core.Crypto {
         ///     Initialization vector size constant.
         /// </summary>
         public const int DefaultInitializationVectorSize = 16;
+        
+        // NIST recommended iterations for PBKDF2 is much higher now, 
+        // but we keep 5000 to maintain compatibility with your existing encrypted data.
+    // If this is a new project, consider raising this to 100,000+.
+    private const int DerivationIterations = 5000; 
 
         protected readonly Aes _aes;
         protected readonly byte[]? _initializationVector;
@@ -45,8 +51,8 @@ namespace GPSoftware.Core.Crypto {
             byte[] initializationVector, 
             CipherMode mode = CipherMode.CBC, 
             PaddingMode padding = PaddingMode.PKCS7) {
-            if (key == null) throw new ArgumentNullException(nameof(key), "");
-            if (initializationVector == null || initializationVector.Length <= 0) throw new ArgumentNullException(nameof(initializationVector), "");
+            Check.NotNull(initializationVector, nameof(initializationVector));
+            Check.NotNullOrEmpty(initializationVector, nameof(initializationVector));
 
             _initializationVector = new byte[initializationVector.Length];
             Buffer.BlockCopy(initializationVector, 0, _initializationVector, 0, initializationVector.Length);
@@ -67,14 +73,13 @@ namespace GPSoftware.Core.Crypto {
         /// <param name="mode">Mode for operation used in the symmetric encryption.</param>
         /// <param name="padding">Padding mode used in the symmetric encryption.</param>
         public AesProvider(byte[] key, CipherMode mode = CipherMode.CBC, PaddingMode padding = PaddingMode.PKCS7) {
-            if (key == null) throw new ArgumentNullException(nameof(key), "");
+            Check.NotNull(key, nameof(key));
             _aes = CreateCryptographyProvider(
                 key: key,
                 iv: null,   // use a random IV for each new encryption
                 mode: mode,
                 padding: padding,
                 blockSize: DefaultAesBlockSize);
-
         }
 
         /// <summary>
@@ -86,11 +91,11 @@ namespace GPSoftware.Core.Crypto {
         /// <param name="padding">Padding mode used in the symmetric encryption.</param>
         /// <param name="keySize">specifies the AES Key sizes used for generating the real encryption key.</param>
         public AesProvider(string plainKey, CipherMode mode = CipherMode.CBC, PaddingMode padding = PaddingMode.PKCS7, AesKeySize keySize = DefaultAesKeySize) {
-            if (string.IsNullOrWhiteSpace(plainKey)) throw new ArgumentNullException(nameof(plainKey), "");
-#if !NETSTANDARD2_0
-            Rfc2898DeriveBytes keyGenerator = new Rfc2898DeriveBytes(plainKey, DefaultInitializationVectorSize, 5000, HashAlgorithmName.SHA256);
+            Check.NotNullOrWhiteSpace(plainKey, nameof(plainKey));
+#if NET6_0_OR_GREATER
+            using var keyGenerator = new Rfc2898DeriveBytes(plainKey, DefaultInitializationVectorSize, DerivationIterations, HashAlgorithmName.SHA256);
 #else
-            Rfc2898DeriveBytes keyGenerator = new Rfc2898DeriveBytes(plainKey, DefaultInitializationVectorSize, 5000);
+            using var keyGenerator = new Rfc2898DeriveBytes(plainKey, DefaultInitializationVectorSize, DerivationIterations);
 #endif
             _aes = CreateCryptographyProvider(
                 key: keyGenerator.GetBytes((int)((uint)keySize / 8)),
@@ -123,13 +128,13 @@ namespace GPSoftware.Core.Crypto {
         /// <param name="padding">Padding mode used in the symmetric encryption.</param>
         /// <param name="keySize">specifies the AES Key sizes used for generating the real encryption key.</param>
         public AesProvider(string plainKey, byte[] salt, CipherMode mode = CipherMode.CBC, PaddingMode padding = PaddingMode.PKCS7, AesKeySize keySize = DefaultAesKeySize) {
-            if (string.IsNullOrWhiteSpace(plainKey)) throw new ArgumentNullException(nameof(plainKey), "");
-            if (salt == null || salt.Length == 0) throw new ArgumentNullException(nameof(salt), "");
+            Check.NotNullOrWhiteSpace(plainKey, nameof(plainKey));
+            Check.NotNullOrEmpty(salt, nameof(salt));
 
-#if !NETSTANDARD2_0
-            Rfc2898DeriveBytes keyGenerator = new Rfc2898DeriveBytes(plainKey, salt, 5000, HashAlgorithmName.SHA256);
+#if NET6_0_OR_GREATER
+            using var keyGenerator = new Rfc2898DeriveBytes(plainKey, salt, DerivationIterations, HashAlgorithmName.SHA256);
 #else
-            Rfc2898DeriveBytes keyGenerator = new Rfc2898DeriveBytes(plainKey, salt, 5000);
+            using var keyGenerator = new Rfc2898DeriveBytes(plainKey, salt, DerivationIterations);
 #endif
             _initializationVector = keyGenerator.GetBytes(DefaultAesBlockSize / 8);
 
@@ -154,13 +159,13 @@ namespace GPSoftware.Core.Crypto {
 
         /// <inheritdoc cref="IEncryptionProvider.Encrypt(string)" />
         public virtual byte[] Encrypt(string? input) {
-            return string.IsNullOrEmpty(input) ? new byte[0] : Encrypt(Encoding.UTF8.GetBytes(input));
+            return string.IsNullOrEmpty(input) ? Array.Empty<byte>() : Encrypt(Encoding.UTF8.GetBytes(input));
         }
 
         /// <inheritdoc cref="IEncryptionProvider.Encrypt(byte[])" />
         public virtual byte[] Encrypt(byte[] input) {
             if (input is null || input.Length == 0) {
-                return new byte[0];
+                return Array.Empty<byte>();
             }
 
             return (_initializationVector == null) ? InternalEncryptionWithRandomIV(input) : InternalEncryption(input);
@@ -176,7 +181,7 @@ namespace GPSoftware.Core.Crypto {
         /// <inheritdoc cref="IEncryptionProvider.Decrypt(byte[])" />
         public virtual byte[] Decrypt(byte[] input) {
             if (input is null || input.Length == 0) {
-                return new byte[0];
+                return Array.Empty<byte>();
             }
 
             return (_initializationVector == null) ? InternalDecryptionWithExtractedIV(input) : InternalDecryption(input, 0, input.Length);
@@ -194,7 +199,9 @@ namespace GPSoftware.Core.Crypto {
         ///     Dispose the internal resources for the operarion
         /// </summary>
         protected virtual void Dispose(bool disposing) {
-            if (_aes != null) { _aes.Dispose(); }
+            if (disposing) {
+                _aes?.Dispose();
+            }
         }
 
         /// <summary>
@@ -225,11 +232,17 @@ namespace GPSoftware.Core.Crypto {
         private byte[] InternalEncryptionWithRandomIV(byte[] input) {
             byte[] iv;
             byte[] encryptedBytes;
+            // Lock is necessary because Aes.IV property is not thread-safe on shared instance
             lock (_mySynchObject) {
                 _aes.GenerateIV();
                 iv = _aes.IV;
-                encryptedBytes = InternalEncryption(input);
+                
+                // create encryptor inside lock to ensure IV consistency, but transform is fast
+                using (ICryptoTransform transform = _aes.CreateEncryptor()) {
+                    encryptedBytes = transform.TransformFinalBlock(input, 0, input.Length);
+                }
             }
+
             // Add the initialization vector
             var result = new byte[iv.Length + encryptedBytes.Length];
             Buffer.BlockCopy(iv, 0, result, 0, iv.Length);
@@ -259,13 +272,17 @@ namespace GPSoftware.Core.Crypto {
         ///     Decrypt the passed input using the IV extracted by the input itself.
         /// </summary>
         private byte[] InternalDecryptionWithExtractedIV(byte[] input) {
+            var ivLength = _aes.BlockSize / 8;
+            if (input.Length < ivLength) throw new ArgumentException("Input data is too short to contain IV.");
+
             // Extract the initialization vector
-            var iv = new byte[_aes.IV.Length];
+            var iv = new byte[ivLength];
             Buffer.BlockCopy(input, 0, iv, 0, iv.Length);
 
             // decrypt and return it
             lock (_mySynchObject) {
                 _aes.IV = iv;
+                // Optimized: calculate offsets to avoid allocating new arrays
                 return InternalDecryption(input, iv.Length, input.Length - iv.Length);
             }
         }
@@ -275,29 +292,7 @@ namespace GPSoftware.Core.Crypto {
         /// </summary>
         private byte[] InternalDecryption(byte[] input, int inputOffset, int inputCount) {
             using (ICryptoTransform transform = _aes.CreateDecryptor()) {
-                return transform.TransformFinalBlock(input, inputOffset,inputCount);
-                //// following lines are a longer version of the instruction above
-                //// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                //using (MemoryStream memoryStream = new MemoryStream(input))
-                //using (CryptoStream cryptoStream = new CryptoStream(memoryStream, transform, CryptoStreamMode.Read)) {
-                //    return StreamToBytes(cryptoStream);
-                //}
-            }
-        }
-
-        /// <summary>
-        ///     Converts a <see cref="Stream"/> into a byte array.
-        /// </summary>
-        /// <param name="stream">Stream.</param>
-        /// <returns>The stream's content as a byte array.</returns>
-        private byte[] StreamToBytes(Stream stream) {
-            if (stream is MemoryStream ms) {
-                return ms.ToArray();
-            }
-
-            using (var output = new MemoryStream()) {
-                stream.CopyTo(output);
-                return output.ToArray();
+                return transform.TransformFinalBlock(input, inputOffset, inputCount);
             }
         }
 

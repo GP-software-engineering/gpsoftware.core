@@ -48,8 +48,9 @@ namespace GPSoftware.Core.Globalization {
         /// </summary>
         /// <param name="amount">The numeric amount to format.</param>
         /// <param name="currencyCode">The three-letter ISO 4217 currency code (e.g. "USD", "EUR").</param>
+        /// <param name="format">The format string to use (default is "C" for currency).</param>
         /// <returns>A formatted currency string (e.g. "€ 1.250,50" or "$ 1,250.50" depending on current culture).</returns>
-        public static string FormatAmount(decimal amount, string currencyCode) {
+        public static string FormatAmount(decimal amount, string currencyCode, string format = "C") {
             Check.NotNullOrEmpty(currencyCode, nameof(currencyCode));
 
             // Try to get the symbol, fallback to the code itself if not found (e.g. "100 XYZ")
@@ -61,8 +62,33 @@ namespace GPSoftware.Core.Globalization {
             culture.NumberFormat.CurrencySymbol = symbol;
 
             // Use the "C" format specifier with the modified culture
-            return amount.ToString("C", culture);
+            return amount.ToString(format, culture);
         }
+
+        /// <summary>
+        ///     Formats a double amount as a currency string using the symbol associated with the provided ISO 4217 code.
+        /// </summary>
+        /// <param name="amount">The numeric amount to format.</param>
+        /// <param name="currencyCode">The three-letter ISO 4217 currency code (e.g. "USD", "EUR").</param>
+        /// <param name="format">The format string to use (default is "C" for currency).</param>
+        /// <returns>A formatted currency string (e.g. "€ 1.250,50" or "$ 1,250.50" depending on current culture).</returns>
+        public static string FormatAmount(double amount, string currencyCode, string format = "C") {
+            return FormatAmount((decimal)amount, currencyCode, format);
+        }
+
+        #region Extensions
+
+        /// <summary>
+        ///     Extension method to format a decimal amount as a currency string using the symbol associated with the provided ISO 4217 code.
+        /// </summary>
+        /// <param name="format">The format string to use.</param>
+        /// <param name="currencyCode">The three-letter ISO 4217 currency code (e.g. "USD", "EUR").</param>
+        /// <returns>A formatted currency string (e.g. "€ 1.250,50" or "$ 1,250.50" depending on current culture).</returns>
+        public static string ToString(this decimal amount, string format, string currencyCode) {
+            return FormatAmount(amount, currencyCode, format);
+        }
+
+        #endregion
 
         /// <summary>
         /// Contains the raw data definitions. 

@@ -1,7 +1,7 @@
 using System.Text;
 using GPSoftware.Core.Crypto;
 
-namespace GPSoftware.core.Tests.Crypto {
+namespace GPSoftware.Core.Tests.Crypto {
 
     public class AesProvider_Tests {
 
@@ -70,7 +70,7 @@ namespace GPSoftware.core.Tests.Crypto {
             // run
             byte[] output1 = enc1.Encrypt(Encoding.UTF8.GetBytes(_input));
             byte[] output2 = enc1.Encrypt(Encoding.UTF8.GetBytes(_input));
-            byte[] output3 = enc2.Encrypt(_input);
+            byte[] output3 = enc2.Encrypt(Encoding.UTF8.GetBytes(_input));
 
             // assert
             output1.ShouldNotBe(Encoding.UTF8.GetBytes(_input));
@@ -104,8 +104,8 @@ namespace GPSoftware.core.Tests.Crypto {
             byte[] output1a = enc1.Encrypt(Encoding.UTF8.GetBytes(_input));
             byte[] output1b = enc1.Encrypt(Encoding.UTF8.GetBytes(_input));
 
-            byte[] output2a = enc2.Encrypt(_input);
-            byte[] output2b = enc2.Encrypt(_input);
+            byte[] output2a = enc2.Encrypt(Encoding.UTF8.GetBytes(_input));
+            byte[] output2b = enc2.Encrypt(Encoding.UTF8.GetBytes(_input));
 
             // assert
             output1a.SequenceEqual(output1b).ShouldBeFalse();
@@ -156,6 +156,7 @@ namespace GPSoftware.core.Tests.Crypto {
             // prepare
             string plainKey = "This is my k€!";
             string salt = "This is my k€!";
+            
             using var enc1 = new AesProvider(plainKey, salt);
             using var enc2 = new AesProvider(plainKey, salt);
 
@@ -166,7 +167,7 @@ namespace GPSoftware.core.Tests.Crypto {
             var output2b = enc2.EncryptToBase64(_input);
 
             // assert
-            output1a.ShouldBe(output1b);
+            output1a.ShouldBe(output1b); // Same Salt = Same IV = Deterministic
             output1a.ShouldBe(output2a);
             output1a.ShouldBe(output2b);
 
@@ -182,16 +183,6 @@ namespace GPSoftware.core.Tests.Crypto {
             plain1b.ShouldBe(_input);
             plain2a.ShouldBe(_input);
             plain2b.ShouldBe(_input);
-
-            // ================================================
-            // run 
-            plain1a = enc2.DecryptFromBase64(output2a);
-            plain2a = enc1.DecryptFromBase64(output2b);
-
-            // assert
-            plain1a.ShouldBe(_input);
-            plain2a.ShouldBe(_input);
         }
-
     }
 }

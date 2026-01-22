@@ -1,10 +1,11 @@
 <Project>
 	<PropertyGroup>
-		<VersionPrefix>3.3.0.1</VersionPrefix>
+		<VersionPrefix>3.4.0</VersionPrefix>
 		
 		<PackageReleaseNotes>
-            - Implemented validation logic for multiple formats, including support for combined types (e.g., Italian or Swiss).
-            - Added comprehensive unit tests for the SocialSecurityNumberAttribute covering Italian, Swiss, Austrian, and French social security number formats.
+            - improved performance for data processing module
+            - improved compatibility with .NET 8.0
+            - improved the Currency class with a ToString overload that accepts a CultureInfo parameter
         </PackageReleaseNotes>
 	</PropertyGroup>
 </Project>

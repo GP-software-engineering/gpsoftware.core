@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 using GPSoftware.Core.Crypto;
 
 
-namespace GPSoftware.core.Tests.Crypto {
+namespace GPSoftware.Core.Tests.Crypto {
 
     public class Hasher_Tests {
 
@@ -35,6 +35,46 @@ namespace GPSoftware.core.Tests.Crypto {
             output.ShouldNotBeNullOrEmpty();
             output.Length.ShouldBe(64);
             Regex.IsMatch(output, "^[0-9a-fA-F]{64}$", RegexOptions.Compiled).ShouldBeTrue();
+        }
+
+        [Fact]
+        public void Extension_ToSha256_ShouldMatchStaticMethod() {
+            // prepare
+            string input = "Crypto check";
+
+            // run
+            string staticResult = Hasher.ComputeSha256Hash(input);
+            string extensionResult = input.ToSha256();
+
+            // assert
+            extensionResult.ShouldBe(staticResult);
+            extensionResult.Length.ShouldBe(64);
+        }
+
+        [Fact]
+        public void Extension_ToSha1_ShouldMatchStaticMethod() {
+            // prepare
+            string input = "Crypto check";
+
+            // run
+            string staticResult = Hasher.ComputeSha1Hash(input);
+            string extensionResult = input.ToSha1();
+
+            // assert
+            extensionResult.ShouldBe(staticResult);
+            extensionResult.Length.ShouldBe(40);
+        }
+
+        [Theory]
+        [InlineData("")]
+        [InlineData(null)]
+        public void ComputeSha256_EmptyInput_ShouldReturnEmpty(string? input) {
+            // run
+            // The updated code handles null/empty gracefully
+            string output = (input ?? "").ToSha256();
+
+            // assert
+            output.ShouldBeEmpty();
         }
     }
 }
