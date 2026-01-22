@@ -1,6 +1,8 @@
-﻿using System.Text.RegularExpressions;
+using System;
+using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
 
-namespace System.ComponentModel.DataAnnotations {
+namespace GPSoftware.Core.Validation {
 
     /// <summary>
     ///     Extends the EmailAddressAttribute by also accepting empty email addresses ("").

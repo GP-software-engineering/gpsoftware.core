@@ -1,16 +1,18 @@
-﻿using GPSoftware.Core.SSN;
+using System;
+using System.ComponentModel.DataAnnotations;
+using GPSoftware.Core.SSN;
 
-namespace System.ComponentModel.DataAnnotations {
+namespace GPSoftware.Core.Validation {
 
     /// <summary>
-    /// Validates that a string property conforms to one or more specified Social Security Number (SSN) formats
-    /// from different countries.
+    ///     Validates that a string property conforms to one or more specified Social Security Number (SSN) formats
+    ///     from different countries.
     /// </summary>
     /// <remarks>
-    /// This attribute allows specifying multiple SSN types (e.g., Italian, Swiss) using a flags enum.
-    /// The validation will pass if the input string matches at least one of the specified SSN types.
-    /// It relies on external validation methods in a <c>SocialSecurityNumbers</c> class (not provided here)
-    /// for the actual format checking of each country's SSN.
+    ///     This attribute allows specifying multiple SSN types (e.g., Italian, Swiss) using a flags enum.
+    ///     The validation will pass if the input string matches at least one of the specified SSN types.
+    ///     It relies on external validation methods in a <c>SocialSecurityNumbers</c> class (not provided here)
+    ///     for the actual format checking of each country's SSN.
     /// </remarks>
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter, AllowMultiple = false)]
     public class SocialSecurityNumberAttribute : DataTypeAttribute {
@@ -43,9 +45,9 @@ namespace System.ComponentModel.DataAnnotations {
             // Future SSN types can be added here, e.g., German = 0x10, Spanish = 0x20, etc.
 
             /// <summary>
-            /// Represents a French Social Security Number (INSEE Number).
+            /// Represents any other format for a Social Security Number (INSEE Number).
             /// </summary>
-            Any = 0xFF,
+            Any = 0x80,
         }
 
         /// <summary>
@@ -87,10 +89,10 @@ namespace System.ComponentModel.DataAnnotations {
             // I want to allow empty strings
             if (string.IsNullOrEmpty(stringValue)) return true;
 
-            return (((AcceptedTypes & Types.Italian) != 0) && SocialSecurityNumbers.IsValidCodiceFiscale(stringValue))
-                || (((AcceptedTypes & Types.Swiss) != 0) && SocialSecurityNumbers.IsValidSwissAVS(stringValue))
-                || (((AcceptedTypes & Types.Austrian) != 0) && SocialSecurityNumbers.IsValidAustrianSVNR(stringValue))
-                || (((AcceptedTypes & Types.French) != 0) && SocialSecurityNumbers.IsValidFrenchINSEE(stringValue))
+            return (((AcceptedTypes & Types.Italian) != 0) && SocialSecurityNumbers.IsValidCodiceFiscale(stringValue!))
+                || (((AcceptedTypes & Types.Swiss) != 0) && SocialSecurityNumbers.IsValidSwissAVS(stringValue!))
+                || (((AcceptedTypes & Types.Austrian) != 0) && SocialSecurityNumbers.IsValidAustrianSVNR(stringValue!))
+                || (((AcceptedTypes & Types.French) != 0) && SocialSecurityNumbers.IsValidFrenchINSEE(stringValue!))
             ;
         }
     }

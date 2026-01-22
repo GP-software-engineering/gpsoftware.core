@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
@@ -15,7 +15,7 @@ namespace GPSoftware.Core.Validation {
             T value,
             string? parameterName,
             string? message = null) {
-            if (value == null) {
+            if (object.Equals(value, default(T))) {
                 throw new ArgumentNullException(parameterName, message ?? $"{parameterName ?? "parameter"} can not be null!");
             }
 
@@ -129,7 +129,7 @@ namespace GPSoftware.Core.Validation {
             string? parameterName,
             string? message = null)
             where T : IComparable<T> {
-            if (value == null) {
+            if (object.Equals(value, default(T))) {
                 throw new ArgumentNullException(message ?? $"{parameterName ?? "parameter"} can not be null!", parameterName);
             }
 

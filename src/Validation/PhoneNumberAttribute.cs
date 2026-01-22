@@ -1,6 +1,8 @@
-﻿using System.Text.RegularExpressions;
+using System;
+using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
 
-namespace System.ComponentModel.DataAnnotations {
+namespace GPSoftware.Core.Validation {
 
     /// <summary>
     ///     Phone number in the form [+]prefix ["blank"|.|-]number possible ending with ")"
@@ -16,7 +18,7 @@ namespace System.ComponentModel.DataAnnotations {
         }
 
         public override bool IsValid(object? value) {
-            return (value == null) || ((value as string) == string.Empty) || Regex.IsMatch((value as string), pattern);
+            return (value == null) || ((value as string) == string.Empty) || Regex.IsMatch((value as string)!, pattern);
         }
     }
 }

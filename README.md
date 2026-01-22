@@ -5,7 +5,8 @@
 [![NuGet](https://img.shields.io/nuget/v/GPSoftware.Core.svg)](https://www.nuget.org/packages/GPSoftware.Core)
 
 ## Overview
-A multi-platform simple library of useful utilities for calculating checksum, connect to Smtp servers and lots of extension methods for DateTime, DateTimeOffset and other classes.
+A multi-platform simple library of useful utilities for calculating checksum, connect to Smtp servers and lots of extension
+methods for DateTime, DateTimeOffset and other classes.
 
 ## Disclaimer
 

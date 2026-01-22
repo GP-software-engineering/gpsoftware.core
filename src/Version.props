@@ -1,10 +1,11 @@
 <Project>
 	<PropertyGroup>
-		<VersionPrefix>3.2.3</VersionPrefix>
+		<VersionPrefix>3.3.0</VersionPrefix>
 		
 		<PackageReleaseNotes>
-            - Fixed the deep copy.
+            - Added useful extention methdos for DateOnly (net6+).
             - Optimized some extension methods.
+            - Optimized performance of hashing algorithms.
         </PackageReleaseNotes>
 	</PropertyGroup>
 </Project>
