@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 namespace GPSoftware.Core.Validation {
 
@@ -11,11 +11,12 @@ namespace GPSoftware.Core.Validation {
         /// <summary>Static instance for performance)</summary>
         public static readonly MemberNameComparer Default = new MemberNameComparer();
 
-        public bool Equals(string x, string y) {
-            return x.Equals(y) || x.EndsWith(_PREFIX + y);
+        public virtual bool Equals(string? x, string? y) {
+            if (x is null || y is null) return false;
+            return (x == y) ||  x.Equals(y) || x.EndsWith(_PREFIX + y);
         }
 
-        public int GetHashCode(string x) {
+        public virtual int GetHashCode(string x) {
             return x.GetHashCode();
         }
 

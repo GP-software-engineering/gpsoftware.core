@@ -1,7 +1,6 @@
-﻿using System;
+using System;
 using System.Linq;
 using GPSoftware.Core.Dtos;
-using System.Reflection;
 
 namespace GPSoftware.Core.Extensions {
 
@@ -66,7 +65,10 @@ namespace GPSoftware.Core.Extensions {
                 if (srcValue is IMyDto srcDto) {
                     // Create a new instance of the concrete type of the destination property
                     // We can use Activator because we know the property type is a concrete class at runtime
-                    var destDto = (IMyDto)Activator.CreateInstance(destPrp.PropertyType);
+                    var destDtoObj = Activator.CreateInstance(destPrp.PropertyType);
+                    if (destDtoObj is not IMyDto destDto) {
+                        throw new InvalidOperationException($"Property {destPrp.Name} is not of type IMyDto.");
+                    }
 
                     // Recursive call. 
                     // This now works because the 3rd overload no longer requires 'new()' constraint on the interface types.

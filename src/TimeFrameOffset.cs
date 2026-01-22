@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -31,7 +31,7 @@ namespace GPSoftware.Core {
             }
         }
 
-        public override bool Equals(object obj) {
+        public override bool Equals(object? obj) {
             if (obj == null) return false;
             if (!(obj is TimeFrameOffset tf)) return false;
             return (Start == tf.Start) && (End == tf.End);

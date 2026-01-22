@@ -1,11 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace GPSoftware.Core.Validation {
 
@@ -15,7 +11,7 @@ namespace GPSoftware.Core.Validation {
     ///     <see cref="ValidationAttribute.ErrorMessageResourceType"/> and <see cref="ValidationAttribute.ErrorMessageResourceName"/>.
     /// </summary>
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field | AttributeTargets.Parameter)]
-    public class RangeAttribute : ValidationAttribute {
+    public class DatetimeRangeAttribute : ValidationAttribute {
 
         /// <summary>
         ///     The minimum allowed date string (e.g., "2023-01-01" or "Now-5d").
@@ -28,11 +24,11 @@ namespace GPSoftware.Core.Validation {
         public string Maximum { get; }
 
         /// <summary>
-        ///     Initializes a new instance of the <see cref="RangeAttribute"/> class.
+        ///     Initializes a new instance of the <see cref="DatetimeRangeAttribute"/> class.
         /// </summary>
         /// <param name="minimum">The minimum date expression.</param>
         /// <param name="maximum">The maximum date expression.</param>
-        public RangeAttribute(string minimum, string maximum) {
+        public DatetimeRangeAttribute(string minimum, string maximum) {
             Minimum = minimum;
             Maximum = maximum;
 

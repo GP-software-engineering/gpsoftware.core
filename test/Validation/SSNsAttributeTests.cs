@@ -1,5 +1,4 @@
-using System.ComponentModel.DataAnnotations;
-using System.Linq.Expressions;
+using GPSoftware.Core.Validation;
 
 namespace GPSoftware.core.Tests.Validation {
     public class SSNsAttributeTests {
@@ -33,7 +32,7 @@ namespace GPSoftware.core.Tests.Validation {
         [InlineData("190123306030016", false)]
         [InlineData("CRTGPR68Z22F839K", false)]
         [InlineData("INVALID_CF", false)]
-        public void Italian_Validate(string testValue, bool mustBeValid) {
+        public void Italian_Validate(string? testValue, bool mustBeValid) {
             // Arrange
             var attribute = new SocialSecurityNumberAttribute(SocialSecurityNumberAttribute.Types.Italian);
 
@@ -51,7 +50,7 @@ namespace GPSoftware.core.Tests.Validation {
         [InlineData("756.0000.0000.02", true)]
         [InlineData("756.1234.5678.92", false)]
         [InlineData("CRTGPR68H22F839B", false)]
-        public void Swiss_Validate(string testValue, bool mustBeValid) {
+        public void Swiss_Validate(string? testValue, bool mustBeValid) {
             // Arrange
             var attribute = new SocialSecurityNumberAttribute(SocialSecurityNumberAttribute.Types.Swiss);
 

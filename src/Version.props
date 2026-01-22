@@ -1,11 +1,10 @@
 <Project>
 	<PropertyGroup>
-		<VersionPrefix>3.3.0</VersionPrefix>
+		<VersionPrefix>3.3.0.1</VersionPrefix>
 		
 		<PackageReleaseNotes>
-            - Added useful extention methdos for DateOnly (net6+).
-            - Optimized some extension methods.
-            - Optimized performance of hashing algorithms.
+            - Implemented validation logic for multiple formats, including support for combined types (e.g., Italian or Swiss).
+            - Added comprehensive unit tests for the SocialSecurityNumberAttribute covering Italian, Swiss, Austrian, and French social security number formats.
         </PackageReleaseNotes>
 	</PropertyGroup>
 </Project>
