@@ -1,11 +1,13 @@
 <Project>
 	<PropertyGroup>
 		<VersionPrefix>3.4.0</VersionPrefix>
-		
 		<PackageReleaseNotes>
-            - improved performance for data processing module
-            - improved compatibility with .NET 8.0
-            - improved the Currency class with a ToString overload that accepts a CultureInfo parameter
-        </PackageReleaseNotes>
+			- improved performance for data processing module
+			- improved compatibility with .NET 8.0
+			- improved the Currency class with a ToString overload that accepts a CultureInfo parameter
+		</PackageReleaseNotes>
+		<Authors>Gianpiero Caretti</Authors>
+		<Company>GP software engineering</Company>
+		<Copyright>(c) 2018-26 GP software engineering</Copyright>
 	</PropertyGroup>
 </Project>
