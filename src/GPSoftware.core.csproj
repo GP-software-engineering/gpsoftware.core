@@ -7,12 +7,11 @@
 		<Nullable>enable</Nullable>
 		<LangVersion>latest</LangVersion>
 		<RootNamespace>GPSoftware.Core</RootNamespace>
-		
-		<Copyright>(c) 2018-25 GP software engineering s.r.l.</Copyright>
-		<Title>A multi-platform simple library of useful utilities</Title>
+				<Title>A lightweight, versatile, high-performance .NET library providing essential utilities and extension methods.</Title>
 		<Description>
-			A multi-platform simple library of useful utilities for calculating checksums, execute encryption and hashing, connect to smtp servers, and lots of extension methods for DateTime, Strings, Collections, Enums, etc.
-		</Description>
+            Built with cross-compatibility in mind, it supports modern .NET runtimes while remaining fully functional for legacy systems.
+            The library targets .NET Standard 2.0, .NET6.0 and successive ensuring it can be used across a wide range of platforms.
+        </Description>
 
 		<AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
 
@@ -25,9 +24,6 @@
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 
-
-		<Authors>GP software engineering</Authors>
-		<Company>GP software engineering s.r.l.</Company>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageIcon>package_icon.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
