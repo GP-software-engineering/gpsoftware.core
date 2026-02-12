@@ -1,10 +1,8 @@
 <Project>
 	<PropertyGroup>
-		<VersionPrefix>3.4.0</VersionPrefix>
+		<VersionPrefix>3.4.1</VersionPrefix>
 		<PackageReleaseNotes>
-			- improved performance for data processing module
-			- improved compatibility with .NET 8.0
-			- improved the Currency class with a ToString overload that accepts a CultureInfo parameter
+			- new extension methods for printing DateTime and decimal
 		</PackageReleaseNotes>
 		<Authors>Gianpiero Caretti</Authors>
 		<Company>GP software engineering</Company>

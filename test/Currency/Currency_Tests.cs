@@ -20,6 +20,48 @@ public class Currency_Tests {
     }
 
     [Fact]
+    public void FormatAmount_Extension_ShouldFormatCorrectly_WithDifferentCultures() {
+        // Arrange
+        decimal amount = 1250.50m;
+
+        // Save current culture to restore it later
+        var originalCulture = CultureInfo.CurrentCulture;
+
+        try {
+            // CASE 1: Test with Italian Culture (Comma decimal separator)
+            // -----------------------------------------------------------
+            CultureInfo.CurrentCulture = new CultureInfo("it-IT");
+
+            // Even if we are in Italy, asking for USD should show Italian formatting numbers but Dollar symbol
+            // Expected: "$ 1.250,50" (Note: placement of symbol depends on culture pattern, 
+            // but usually cloning culture keeps the pattern. In IT, positive currency pattern is usually "€ n")
+            // Let's rely on the fact that we swap the symbol.
+
+            string formattedItUsd = amount.FormatAmount("USD", "C");
+
+            // Assert: Symbol is $, separator is comma
+            formattedItUsd.ShouldContain("$");
+            formattedItUsd.ShouldContain("1.250,50");
+
+
+            // CASE 2: Test with US Culture (Dot decimal separator)
+            // ----------------------------------------------------
+            CultureInfo.CurrentCulture = new CultureInfo("en-US");
+
+            string formattedUsEur = amount.FormatAmount("EUR", "C");
+
+            // Assert: Symbol is €, separator is dot
+            formattedUsEur.ShouldContain("€");
+            formattedUsEur.ShouldContain("1,250.50");
+
+        }
+        finally {
+            // Cleanup: Restore original culture
+            CultureInfo.CurrentCulture = originalCulture;
+        }
+    }
+
+    [Fact]
     public void ToString_Extension_ShouldFormatCorrectly_WithDifferentCultures() {
         // Arrange
         decimal amount = 1250.50m;

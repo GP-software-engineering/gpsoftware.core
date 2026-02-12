@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace GPSoftware.Core.Extensions {
@@ -193,5 +193,11 @@ namespace GPSoftware.Core.Extensions {
             return dt.AddTicks(-(dt.Ticks % timeSpan.Ticks));
         }
 
+        /// <summary>
+        ///     Converts the DateTime to its equivalent short date/time string without the year (e.g., "dd/MM hh:mm" or "MM-dd hh:mm" depending on culture),
+        /// </summary>
+        public static string ToShortDateTimeString(this DateTime dt) {
+            return dt.ToShortDateString().Replace(dt.Year.ToString(), "").Trim('/', '-', '.', ' ') + " " + dt.ToShortTimeString();
+        }
     }
 }

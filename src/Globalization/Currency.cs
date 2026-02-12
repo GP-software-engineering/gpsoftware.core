@@ -50,7 +50,7 @@ namespace GPSoftware.Core.Globalization {
         /// <param name="currencyCode">The three-letter ISO 4217 currency code (e.g. "USD", "EUR").</param>
         /// <param name="format">The format string to use (default is "C" for currency).</param>
         /// <returns>A formatted currency string (e.g. "€ 1.250,50" or "$ 1,250.50" depending on current culture).</returns>
-        public static string FormatAmount(decimal amount, string currencyCode, string format = "C") {
+        public static string FormatAmount(this decimal amount, string currencyCode, string format = "C") {
             Check.NotNullOrEmpty(currencyCode, nameof(currencyCode));
 
             // Try to get the symbol, fallback to the code itself if not found (e.g. "100 XYZ")
@@ -72,7 +72,7 @@ namespace GPSoftware.Core.Globalization {
         /// <param name="currencyCode">The three-letter ISO 4217 currency code (e.g. "USD", "EUR").</param>
         /// <param name="format">The format string to use (default is "C" for currency).</param>
         /// <returns>A formatted currency string (e.g. "€ 1.250,50" or "$ 1,250.50" depending on current culture).</returns>
-        public static string FormatAmount(double amount, string currencyCode, string format = "C") {
+        public static string FormatAmount(this double amount, string currencyCode, string format = "C") {
             return FormatAmount((decimal)amount, currencyCode, format);
         }
 
