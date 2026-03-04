@@ -7,7 +7,10 @@
         <Nullable>enable</Nullable>
         <LangVersion>latest</LangVersion>
         <RootNamespace>GPSoftware.Core</RootNamespace>
-                <Title>A lightweight, versatile, high-performance .NET library providing essential utilities and extension methods.</Title>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <Title>A lightweight, versatile, high-performance .NET library providing essential utilities and extension methods.</Title>
         <Description>
             Built with cross-compatibility in mind, it supports modern .NET runtimes while remaining fully functional for legacy systems.
             The library targets .NET Standard 2.0, .NET6.0 and successive ensuring it can be used across a wide range of platforms.
@@ -35,6 +38,16 @@
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+        
+        <PackageReference Include="PolySharp" Version="1.15.0">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+
+
+    <ItemGroup>
         <None Remove="deploy_corelib.cmd" />
         <None Remove="deploy_lib.cmd" />
     </ItemGroup>
@@ -52,12 +65,4 @@
             <PackagePath>\</PackagePath>
         </None>
     </ItemGroup>
-
-    <ItemGroup>
-        <PackageReference Include="PolySharp" Version="1.15.0">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-    </ItemGroup>
-
 </Project>

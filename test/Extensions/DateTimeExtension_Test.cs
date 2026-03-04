@@ -59,29 +59,61 @@ namespace GPSoftware.core.Tests.Extensions {
             calculatedEndOfWeek.Equals(endOfNextWeek);
         }
 
-        [Fact]
-        public void LastWeekDayOfMonth_Test() {
-            // preapre
-            var day = new DateTime(2022, 11, 28);
-            // run
-            var lastDay = day.LastWeekDayOfMonth(day.DayOfWeek);
-            // assert
-            lastDay.DayOfWeek.ShouldBe(day.DayOfWeek);
-            lastDay.ShouldBe(day);
+        [Theory]
+        [InlineData(2022, 11, 28, DayOfWeek.Monday, 2022, 11, 28)]
+        [InlineData(2022, 12, 29, DayOfWeek.Thursday, 2022, 12, 29)]
+        public void LastWeekDayOfMonth_ExtensionMethod_ShouldReturnCorrectDate(
+                   int year, int month, int day, DayOfWeek targetDayOfWeek,
+                   int expectedYear, int expectedMonth, int expectedDay) {
 
-            // run
-            lastDay = DateTimeExtension.LastWeekDayOfMonth(day.Year, day.Month, day.DayOfWeek - 1);
-            // assert
-            lastDay.DayOfWeek.ShouldBe(day.DayOfWeek - 1);
-            lastDay.Day.ShouldBe(day.Day - 1);
+            // Arrange
+            var inputDate = new DateTime(year, month, day);
+            var expectedDate = new DateTime(expectedYear, expectedMonth, expectedDay);
 
-            // preapre
-            day = new DateTime(2022, 12, 29);
-            // run
-            lastDay = day.LastWeekDayOfMonth(day.DayOfWeek);
-            // assert
-            lastDay.ShouldBe(day);
+            // Act
+            var result = inputDate.LastWeekDayOfMonth(targetDayOfWeek);
+
+            // Assert
+            result.ShouldBe(expectedDate);
+            result.DayOfWeek.ShouldBe(targetDayOfWeek);
         }
 
+        [Fact]
+        public void LastWeekDayOfMonth_StaticMethod_ShouldReturnCorrectDate() {
+            // Arrange
+            int year = 2022;
+            int month = 11;
+            // In the original test: input was Monday (1), target was Sunday (0)
+            DayOfWeek targetDayOfWeek = DayOfWeek.Sunday;
+            var expectedDate = new DateTime(2022, 11, 27);
+
+            // Act
+            // Note: pass DateTimeKind to avoid the overlap warning we fixed earlier
+            var result = DateExtensions.LastWeekDayOfMonth(year, month, targetDayOfWeek, DateTimeKind.Unspecified);
+
+            // Assert
+            result.ShouldBe(expectedDate);
+            result.DayOfWeek.ShouldBe(targetDayOfWeek);
+        }
+
+#if NET6_0_OR_GREATER
+        [Theory]
+        [InlineData(2022, 11, 28, DayOfWeek.Monday, 2022, 11, 28)]
+        public void LastWeekDayOfMonth_DateOnly_ShouldReturnCorrectDate(
+            int year, int month, int day, DayOfWeek targetDayOfWeek,
+            int expectedYear, int expectedMonth, int expectedDay) {
+
+            // Arrange
+            var inputDate = new DateOnly(year, month, day);
+            var expectedDate = new DateOnly(expectedYear, expectedMonth, expectedDay);
+
+            // Act
+            var result = inputDate.LastWeekDayOfMonth(targetDayOfWeek);
+
+            // Assert
+            result.ShouldBe(expectedDate);
+            result.DayOfWeek.ShouldBe(targetDayOfWeek);
+        }
+#endif
     }
 }
