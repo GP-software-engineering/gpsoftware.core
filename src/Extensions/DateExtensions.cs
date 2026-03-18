@@ -14,6 +14,11 @@ namespace GPSoftware.Core.Extensions {
 #if NET6_0_OR_GREATER
         // Reference date for Unix Timestamp calculations (1970-01-01)
         static readonly DateOnly _unixEpochDateOnly = new DateOnly(1970, 1, 1);
+
+        /// <summary>
+        ///     Returns today's date as a <see cref="DateOnly"/>
+        /// </summary>
+        public static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
 #endif
 
         // =========================================================================

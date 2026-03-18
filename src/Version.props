@@ -1,11 +1,10 @@
 <Project>
 	<PropertyGroup>
-		<VersionPrefix>3.4.2</VersionPrefix>
+		<VersionPrefix>3.4.3</VersionPrefix>
 		<PackageReleaseNotes>
-            - Added OptionsMonitorWrapper to wrap IOptionsMonitor and provide a more convenient API for accessing options values and change notifications.
-            - Added sum methods in the Check class.
-            - minor fixes and optimizations.
-        </PackageReleaseNotes>
+			- Added DateOnly.Today.
+			- Fixed an issue on Check.Range with default(T) values.
+		</PackageReleaseNotes>
 		<Authors>Gianpiero Caretti</Authors>
 		<Company>GP software engineering</Company>
 		<Copyright>(c) 2018-26 GP software engineering</Copyright>

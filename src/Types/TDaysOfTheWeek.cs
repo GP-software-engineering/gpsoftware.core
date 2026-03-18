@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using GPSoftware.Core.Typescript;
 
@@ -21,7 +21,7 @@ namespace GPSoftware.Core.Types {
     /// <summary>
     ///
     /// </summary>
-    public static class DateTime_Extensions {
+    public static class DateTimeExtensions {
 
         /// <summary>
         ///     Convert from <see cref="DayOfWeek"/> to <see cref="TDaysOfTheWeek"/>

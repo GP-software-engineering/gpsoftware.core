@@ -1,8 +1,8 @@
 using GPSoftware.Core.Validation;
 
 namespace GPSoftware.core.Tests.Validation {
-    public class SSNsAttributeTests {
-        public SSNsAttributeTests() {
+    public class SSNsAttribute_Tests {
+        public SSNsAttribute_Tests() {
         }
 
         [Theory]
