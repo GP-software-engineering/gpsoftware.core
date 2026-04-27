@@ -1,9 +1,9 @@
 <Project>
 	<PropertyGroup>
-		<VersionPrefix>3.4.3</VersionPrefix>
+		<VersionPrefix>3.5.0</VersionPrefix>
 		<PackageReleaseNotes>
-			- Added DateOnly.Today.
-			- Fixed an issue on Check.Range with default(T) values.
+			- Improved QueryableExtensions.
+			- updated the namespace of the HttpRequestExtension to GPSoftware.Core.Extensions.Net.
 		</PackageReleaseNotes>
 		<Authors>Gianpiero Caretti</Authors>
 		<Company>GP software engineering</Company>

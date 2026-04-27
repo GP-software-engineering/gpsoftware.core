@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using GPSoftware.Core.Extensions;
 
-namespace GPSoftware.Core.Net {
+namespace GPSoftware.Core.Extensions.Net {
 
     public static class HttpRequestExtension {
 

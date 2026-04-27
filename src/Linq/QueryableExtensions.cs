@@ -1,16 +1,74 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using GPSoftware.Core.Validation;
 
 
-namespace GPSoftware.Linq {
+namespace GPSoftware.Core.Linq {
 
     /// <summary>
     ///     Some useful extension methods for <see cref="IQueryable{T}"/>.
     /// </summary>
     public static class QueryableExtensions {
+
+        /// <summary>
+        ///     Applies a flat search filter on all properties marked with [FlatSearchAllowedAttribute].
+        ///     Uses Expression Trees to ensure compatibility with EF Core translation to SQL.
+        /// </summary>
+        public static IQueryable<T> ApplyFlatSearch<T>(this IQueryable<T> query, string searchTerm) {
+            Check.NotNull(query, nameof(query));
+            if (string.IsNullOrWhiteSpace(searchTerm)) return query;
+
+            // Convert search term to lowercase immediately
+            searchTerm = searchTerm.ToLower();
+
+            var flatProps = typeof(T).GetProperties()
+                .Where(prop => Attribute.IsDefined(prop, typeof(FlatSearchAllowedAttribute)))
+                .ToList();
+            if (!flatProps.Any()) return query;
+
+            var parameter = Expression.Parameter(typeof(T), "e");
+            var searchTermExpression = Expression.Constant(searchTerm, typeof(string));
+            var containsMethod = typeof(string).GetMethod(nameof(string.Contains), new[] { typeof(string) });
+            var toLowerMethod = typeof(string).GetMethod(nameof(string.ToLower), Type.EmptyTypes);
+
+            Expression? combinedExpression = null;
+            foreach (var prop in flatProps) {
+                Expression propExpression = Expression.Property(parameter, prop);
+                Expression stringExpression;
+
+                if (prop.PropertyType == typeof(string)) {
+                    stringExpression = propExpression;
+                } else {
+                    var toStringMethod = prop.PropertyType.GetMethod(nameof(object.ToString), Type.EmptyTypes) ?? typeof(object).GetMethod(nameof(object.ToString));
+                    stringExpression = Expression.Call(propExpression, toStringMethod);
+                }
+
+                // Ensure we don't call .ToLower() or .Contains() on a null value
+                var nullCheck = Expression.NotEqual(propExpression, Expression.Constant(null, prop.PropertyType));
+
+                // stringExpression.ToLower()
+                var toLowerExpression = Expression.Call(stringExpression, toLowerMethod);
+
+                // stringExpression.ToLower().Contains(searchTerm)
+                var containsExpression = Expression.Call(toLowerExpression, containsMethod, searchTermExpression);
+
+                // e.Property != null && stringExpression.ToLower().Contains(searchTerm)
+                var safeContains = Expression.AndAlso(nullCheck, containsExpression);
+
+                if (combinedExpression == null) {
+                    combinedExpression = safeContains;
+                } else {
+                    combinedExpression = Expression.OrElse(combinedExpression, safeContains);
+                }
+            }
+
+            if (combinedExpression == null) return query;
+
+            var lambda = Expression.Lambda<Func<T, bool>>(combinedExpression, parameter);
+            return query.Where(lambda);
+        }
 
         /// <summary>
         /// Used for paging. Can be used as an alternative to Skip(...).Take(...) chaining.
