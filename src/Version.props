@@ -1,9 +1,8 @@
 <Project>
 	<PropertyGroup>
-		<VersionPrefix>3.5.0</VersionPrefix>
+		<VersionPrefix>3.5.0.1</VersionPrefix>
 		<PackageReleaseNotes>
-			- Improved QueryableExtensions.
-			- updated the namespace of the HttpRequestExtension to GPSoftware.Core.Extensions.Net.
+			- Recompiled to natively include .NET10.
 		</PackageReleaseNotes>
 		<Authors>Gianpiero Caretti</Authors>
 		<Company>GP software engineering</Company>

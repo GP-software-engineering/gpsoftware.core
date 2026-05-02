@@ -1,12 +1,13 @@
 # GPSoftware.Core
 
 ![NuGet Version](https://img.shields.io/nuget/v/GPSoftware.Core)
-![Target Framework](https://img.shields.io/badge/.NET-Standard%202.0%20%7C%206.0%20%7C%208.0-blue)
+![Target Framework](https://img.shields.io/badge/.NET-10.0%20%7C%208.0%20%7C%206.0%20%7C%20Standard%202.0-blue?logo=dotnet)
 ![License](https://img.shields.io/github/license/GP-software-engineering/gpsoftware.core)
+
 
 A lightweight, versatile, high-performance .NET library providing essential utilities and extension methods.
 
-Built with **cross-compatibility** in mind, it supports modern .NET runtimes while remaining fully functional for legacy systems.
+Built with **cross-compatibility** in mind, it supports modern .NET runtimes (fully optimized for **.NET 10**) while remaining fully functional for legacy systems.
 
 ### Key Features
 
@@ -19,11 +20,11 @@ Built with **cross-compatibility** in mind, it supports modern .NET runtimes whi
 
 ## 🛠 Compatibility & Support
 
-The library targets **.NET Standard 2.0**, ensuring it can be used across a wide range of platforms:
+The library targets **.NET 10** and **.NET Standard 2.0**, ensuring it can be used across the entire .NET ecosystem:
 
-* **Modern .NET**: Fully optimized for **.NET 8.0**, .NET 7.0, and .NET 6.0.
-* **Legacy .NET Framework**: Compatible with **.NET Framework 4.6.2 and above**.
-* **Cross-Platform**: Works seamlessly on Windows, Linux, and macOS via .NET Core / .NET 5+.
+* **Modern .NET**: Fully optimized for **.NET 10.0 (LTS)**, .NET 8.0, and .NET 6.0.
+* **Legacy .NET Framework**: Compatible with **.NET Framework 4.6.2 and above** via .NET Standard 2.0.
+* **Cross-Platform**: Works seamlessly on Windows, Linux, and macOS.
 
 > [!NOTE]
 > While the library is compatible with .NET Standard 2.0, some specific features (like `DateOnly` extensions) are optimized for the runtimes that natively support them.
