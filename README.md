@@ -1,9 +1,10 @@
 # GPSoftware.Core
 
-![NuGet Version](https://img.shields.io/nuget/v/GPSoftware.Core)
-![Target Framework](https://img.shields.io/badge/.NET-10.0%20%7C%208.0%20%7C%206.0%20%7C%20Standard%202.0-blue?logo=dotnet)
-![License](https://img.shields.io/github/license/GP-software-engineering/gpsoftware.core)
+# GPSoftware.Core
 
+![NuGet Version](https://img.shields.io/nuget/v/GPSoftware.Core)
+![Target Framework](https://img.shields.io/badge/.NET-10.0%20%7C%208.0%20%7C%206.0%20%7C%20Standard%202.0-512BD4?style=flat&logo=dotnet&logoColor=white)
+![License](https://img.shields.io/github/license/GP-software-engineering/gpsoftware.core)
 
 A lightweight, versatile, high-performance .NET library providing essential utilities and extension methods.
 

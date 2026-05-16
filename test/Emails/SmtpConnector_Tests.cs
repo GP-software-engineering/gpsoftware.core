@@ -1,3 +1,4 @@
+using System.Net;
 using GPSoftware.Core.Emails;
 using SmtpServer;
 using SmtpServer.ComponentModel;
@@ -41,21 +42,10 @@ namespace GPSoftware.Core.Tests.Emails {
         }
 
         [Fact]
-        public void Constructor_ConnectsSuccessfully_ToRealLibrary() {
-            // Arrange & Act
-            using var connector = new SmtpConnector("127.0.0.1", TEST_PORT, enableSsl: false);
-
-            // Assert
-            Assert.NotNull(connector);
-            Assert.Equal("127.0.0.1", connector.SmtpServerAddress);
-        }
-
-        [Fact]
-        public void CheckResponse_ReturnsTrue_OnInitialConnection() {
-            // Upon connection, a real SMTP server sends "220 Service ready"
+        public void Connect_ReadsWelcomeMessage_Successfully() {
+            // Arrange & Act: connecting should not throw
             using var connector = new SmtpConnector("127.0.0.1", TEST_PORT, false);
 
-            // Act
             // We verify that our connector can parse the standard 220 code
             bool result = connector.CheckResponse(220, out string response);
 
@@ -65,14 +55,32 @@ namespace GPSoftware.Core.Tests.Emails {
         }
 
         [Fact]
-        public async Task SendData_InteractsWithRealServer_Async() {
+        public void WriteLine_SendsCommandCorrectly_Sync() {
+            using var connector = new SmtpConnector("127.0.0.1", TEST_PORT, false);
+
+            // Consume the welcome message (220) before sending commands
+            connector.CheckResponse(220);
+
+            // Act: Send a standard HELO/EHLO command using WriteLine (appends \r\n automatically)
+            string hostName = Dns.GetHostName();
+            connector.WriteLine($"EHLO {hostName}");
+
+            // Assert: The real server MUST reply with "250 OK"
+            var result = connector.CheckResponse(250, out string responseData);
+
+            Assert.True(result, $"Server replied: {responseData}");
+        }
+
+        [Fact]
+        public async Task WriteLine_SendsCommandCorrectly_Async() {
             using var connector = new SmtpConnector("127.0.0.1", TEST_PORT, false);
 
             // Consume the welcome message (220) before sending commands
             await connector.CheckResponseAsync(220);
 
-            // Act: Send a standard HELO/EHLO command
-            await connector.SendDataAsync("EHLO gpsoftware.test\r\n");
+            // Act: Send a standard HELO/EHLO command using the new WriteLineAsync
+            string hostName = Dns.GetHostName();
+            await connector.WriteLineAsync($"EHLO {hostName}");
 
             // Assert: The real server MUST reply with "250 OK"
             var result = await connector.CheckResponseExAsync(250);

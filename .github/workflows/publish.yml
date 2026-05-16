@@ -5,27 +5,39 @@ on:
     types: [published]
 
 env:
-  # Force newer Node.js v24
+  # Force GitHub Actions to use Node.js 24 runtime
+  # Reference: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Ensure dotnet commands see all installed SDKs
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
 
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v6
+    - name: Checkout repository
+      uses: actions/checkout@v4.2.2
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+    - name: Setup .NET SDKs
+      uses: actions/setup-dotnet@v4.3.0
       with:
-        dotnet-version:
-            8.0.x
-            10.0.x
+        # Installing all required SDKs is critical for multi-targeting
+        dotnet-version: |
+          6.0.x
+          8.0.x
+          10.0.x
 
-    # Build the package according to what defined into 'Version.props'
-    - name: Pack
-      run: dotnet pack -c Release -o out
+    - name: Restore dependencies
+      run: dotnet restore src/GPSoftware.core.csproj
 
-    # Carica il pacchetto su NuGet.org
-    - name: Push to NuGet
+    - name: Build for all Target Frameworks
+      run: dotnet build src/GPSoftware.core.csproj -c Release --no-restore
+
+    - name: Pack NuGet package
+      # The pack command now explicitly targets the project file to ensure multi-targeting
+      run: dotnet pack src/GPSoftware.core.csproj -c Release -o out /p:ContinuousIntegrationBuild=true
+
+    - name: Push to NuGet.org
       run: dotnet nuget push "out/*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json

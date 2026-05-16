@@ -28,10 +28,8 @@ namespace GPSoftware.Core.Crypto {
         /// </summary>
         public const int DefaultInitializationVectorSize = 16;
         
-        // NIST recommended iterations for PBKDF2 is much higher now, 
-        // but we keep 5000 to maintain compatibility with your existing encrypted data.
-    // If this is a new project, consider raising this to 100,000+.
-    private const int DerivationIterations = 5000; 
+        // NIST recommended iterations for PBKDF2 is much higher now, but we keep 5000 to maintain compatibility with your existing encrypted data.
+        private const int DerivationIterations = 5000; 
 
         protected readonly Aes _aes;
         protected readonly byte[]? _initializationVector;
@@ -92,13 +90,20 @@ namespace GPSoftware.Core.Crypto {
         /// <param name="keySize">specifies the AES Key sizes used for generating the real encryption key.</param>
         public AesProvider(string plainKey, CipherMode mode = CipherMode.CBC, PaddingMode padding = PaddingMode.PKCS7, AesKeySize keySize = DefaultAesKeySize) {
             Check.NotNullOrWhiteSpace(plainKey, nameof(plainKey));
-#if NET6_0_OR_GREATER
+            int keySizeBytes = (int)((uint)keySize / 8);
+
+#if NET8_0_OR_GREATER
+            byte[] salt = RandomNumberGenerator.GetBytes(DefaultInitializationVectorSize);
+            byte[] key = Rfc2898DeriveBytes.Pbkdf2(Encoding.UTF8.GetBytes(plainKey), salt, DerivationIterations, HashAlgorithmName.SHA256, keySizeBytes);
+#elif NET6_0_OR_GREATER
             using var keyGenerator = new Rfc2898DeriveBytes(plainKey, DefaultInitializationVectorSize, DerivationIterations, HashAlgorithmName.SHA256);
+            byte[] key = keyGenerator.GetBytes(keySizeBytes);
 #else
             using var keyGenerator = new Rfc2898DeriveBytes(plainKey, DefaultInitializationVectorSize, DerivationIterations);
+            byte[] key = keyGenerator.GetBytes(keySizeBytes);
 #endif
             _aes = CreateCryptographyProvider(
-                key: keyGenerator.GetBytes((int)((uint)keySize / 8)),
+                key: key,
                 iv: null,   // use a random IV for each new encryption
                 mode: mode, 
                 padding: padding,
@@ -131,15 +136,30 @@ namespace GPSoftware.Core.Crypto {
             Check.NotNullOrWhiteSpace(plainKey, nameof(plainKey));
             Check.NotNullOrEmpty(salt, nameof(salt));
 
-#if NET6_0_OR_GREATER
+            int ivSizeBytes = DefaultAesBlockSize / 8;
+            int keySizeBytes = (int)((uint)keySize / 8);
+
+#if NET8_0_OR_GREATER
+            // Estraiamo tutti i byte in un'unica chiamata sequenziale per rispettare lo stato del vecchio algoritmo
+            byte[] derivedBytes = Rfc2898DeriveBytes.Pbkdf2(Encoding.UTF8.GetBytes(plainKey), salt, DerivationIterations, HashAlgorithmName.SHA256, ivSizeBytes + keySizeBytes);
+            
+            _initializationVector = new byte[ivSizeBytes];
+            Buffer.BlockCopy(derivedBytes, 0, _initializationVector, 0, ivSizeBytes);
+            
+            byte[] key = new byte[keySizeBytes];
+            Buffer.BlockCopy(derivedBytes, ivSizeBytes, key, 0, keySizeBytes);
+#elif NET6_0_OR_GREATER
             using var keyGenerator = new Rfc2898DeriveBytes(plainKey, salt, DerivationIterations, HashAlgorithmName.SHA256);
+            _initializationVector = keyGenerator.GetBytes(ivSizeBytes);
+            byte[] key = keyGenerator.GetBytes(keySizeBytes);
 #else
             using var keyGenerator = new Rfc2898DeriveBytes(plainKey, salt, DerivationIterations);
+            _initializationVector = keyGenerator.GetBytes(ivSizeBytes);
+            byte[] key = keyGenerator.GetBytes(keySizeBytes);
 #endif
-            _initializationVector = keyGenerator.GetBytes(DefaultAesBlockSize / 8);
 
             _aes = CreateCryptographyProvider(
-                key: keyGenerator.GetBytes((int)((uint)keySize / 8)),
+                key: key,
                 iv: _initializationVector,   // use the same IV for all new encryptions
                 mode: mode,
                 padding: padding,

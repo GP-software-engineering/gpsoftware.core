@@ -1,358 +1,194 @@
-﻿using System;
+using System;
 using System.Net;
+using System.Net.Mail;
+using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace GPSoftware.Core.Emails {
 
     /// <summary>
-    ///     Helper methods to check mail server capabilities
+    ///     Helper methods to check mail server capabilities, validate credentials, 
+    ///     and manage SMTP connections safely without blocking application threads.
+    ///     Optimized for both .NET Framework 4.7.2 and modern .NET 6+ environments.
     /// </summary>
     public static class SmtpHelper {
 
         /// <summary>
-        ///     Connect to a mail server and send an EHLO command. Return the server's reply.
-        ///     See https://www.greenend.org.uk/rjk/tech/smtpreplies.html
+        ///     Connects to a mail server, reads the greeting, and sends an EHLO command. 
+        ///     Returns true if the server replies positively.
+        ///     Reference: https://www.greenend.org.uk/rjk/tech/smtpreplies.html
         /// </summary>
+        /// <param name="server">The SMTP server hostname or IP address.</param>
+        /// <param name="port">The SMTP server port (e.g., 25, 465, 587).</param>
+        /// <param name="secureMode">The security mode to use for the connection.</param>
+        /// <returns>True if the EHLO command was successful; otherwise, false.</returns>
         public static bool EHLOcheck(string server, int port, SecureSocketMode secureMode) {
             return EHLOcheck(server, port, secureMode, out _);
         }
 
         /// <summary>
-        ///     Connect to a mail server and send an EHLO command. Return the server's reply.
-        ///     See https://www.greenend.org.uk/rjk/tech/smtpreplies.html
+        ///     Connects to a mail server, reads the greeting, and sends an EHLO command. 
+        ///     Outputs the server's reply reason.
         /// </summary>
+        /// <param name="server">The SMTP server hostname or IP address.</param>
+        /// <param name="port">The SMTP server port (e.g., 25, 465, 587).</param>
+        /// <param name="secureMode">The security mode to use for the connection.</param>
+        /// <param name="reason">The raw response or error message from the server.</param>
+        /// <returns>True if the EHLO command was successful; otherwise, false.</returns>
         public static bool EHLOcheck(string server, int port, SecureSocketMode secureMode, out string reason) {
-            ISmtpConnector connector;
+            ISmtpConnector connector = null;
             try {
                 switch (secureMode) {
                     case SecureSocketMode.None:
-                        connector = new SmtpConnector(smtpServerAddress: server, port: port, enableSsl: false);
-                        return DoEHLOcheck(connector, out reason);
+                        connector = new SmtpConnector(server, port, enableSsl: false);
+                        if (!ReadGreeting(connector, out reason)) return false;
+                        return SendEhlo(connector, out reason);
+
                     case SecureSocketMode.SslOnConnect:
-                        connector = new SmtpConnector(smtpServerAddress: server, port: port, enableSsl: true);
+                        connector = new SmtpConnector(server, port, enableSsl: true);
                         connector.AuthenticateAsClient();
-                        return DoEHLOcheck(connector, out reason);
+                        if (!ReadGreeting(connector, out reason)) return false;
+                        return SendEhlo(connector, out reason);
+
+                    case SecureSocketMode.StartTlsWhenAvailable:
                     case SecureSocketMode.StartTls:
-                        connector = new SmtpConnector(smtpServerAddress: server, port: port, enableSsl: false);
-                        return DoStartTlsCheck(connector, out reason);
+                        connector = new SmtpConnector(server, port, enableSsl: false);
+
+                        // Initial plain text greeting and EHLO
+                        if (!ReadGreeting(connector, out reason)) return false;
+                        if (!SendEhlo(connector, out reason)) return false;
+
+                        // Check if STARTTLS is supported and required
+                        if (GetSmtpCapabilities(reason).HasFlag(SmtpCapabilities.StartTLS)) {
+                            connector.StartTls(); // Automatically negotiates the secure stream
+
+                            // Send EHLO again over the secure channel (No 220 greeting is sent after TLS negotiation)
+                            return SendEhlo(connector, out reason); 
+                        } else {
+                            if (secureMode == SecureSocketMode.StartTls) {
+                                reason = "STARTTLS is not available on this server";
+                                return false;
+                            } else {
+                                return true; // StartTlsWhenAvailable allows fallback to plain text
+                            }
+                        }
+
                     default:
-                        throw new NotSupportedException(secureMode.ToString());
-                }
-            } catch (Exception ex) {
-                reason = ex.Message;
-                return false;
-            }
-        }
-
-        /// <summary>
-        ///     Connect to a mail server and send an EHLO command. Return true if all is ok.
-        ///     See https://www.greenend.org.uk/rjk/tech/smtpreplies.html
-        /// </summary>
-        public static async Task<bool> EHLOcheckAsync(string server, int port, SecureSocketMode secureMode) {
-            return (await EHLOcheckExAsync(server, port, secureMode).ConfigureAwait(false)).IsSuccess;
-        }
-
-        /// <summary>
-        ///     Connect to a mail server and send an EHLO command. Return the server's reply.
-        ///     See https://www.greenend.org.uk/rjk/tech/smtpreplies.html
-        /// </summary>
-        public static async Task<(bool IsSuccess, string Reason)> EHLOcheckExAsync(string server, int port, SecureSocketMode secureMode) {
-            ISmtpConnector connector;
-            try {
-                switch (secureMode) {
-                    case SecureSocketMode.None:
-                        connector = new SmtpConnector(server, port, false);
-                        return await DoEHLOcheckAsync(connector);
-                    case SecureSocketMode.SslOnConnect:
-                        connector = new SmtpConnector(server, port, true);
-                        await connector.AuthenticateAsClientAsync().ConfigureAwait(false);
-                        return await DoEHLOcheckAsync(connector);
-                    case SecureSocketMode.StartTls:
-                        connector = new SmtpConnector(server, port, false);
-                        return await DoStartTlsCheckExAsync(connector);
-                    default:
-                        throw new NotSupportedException(secureMode.ToString());
-                }
-            } catch (Exception ex) {
-                return (false, ex.Message);
-            }
-        }
-
-        /*
-                /// <summary>
-                ///     Connect to a mail server, send an EHLO command an check the STARTTLS capability. Return true if all is ok.
-                ///     See https://www.greenend.org.uk/rjk/tech/smtpreplies.html
-                /// </summary>
-                public static bool StartTLScheck(string server, int port) {
-                    return StartTLScheck(server, port, out _);
-                }
-
-                /// <summary>
-                ///     Connect to a mail server, send an EHLO command an check the STARTTLS capability. Return true if all is ok.
-                ///     See https://www.greenend.org.uk/rjk/tech/smtpreplies.html
-                /// </summary>
-                public static bool StartTLScheck(string server, int port, out string reason) {
-                    ISmtpConnector connector = null;
-                    try {
-                        connector = new SmtpConnector(server, port, false);
-                    } catch (Exception ex) {
-                        reason = ex.Message;
+                        reason = "Unknown SecureSocketMode";
                         return false;
-                    }
-                    return DoStartTLScheck(connector, out reason);
-                }
-
-                /// <summary>
-                ///     Connect to a mail server, send an EHLO command an check the STARTTLS capability. Return true if all is ok.
-                ///     See https://www.greenend.org.uk/rjk/tech/smtpreplies.html
-                /// </summary>
-                public static async Task<bool> StartTLScheckAsync(string server, int port) {
-                    return (await StartTLScheckExAsync(server, port).ConfigureAwait(false)).IsSuccess;
-                }
-
-                /// <summary>
-                ///     Connect to a mail server, send an EHLO command, check and activate the STARTTLS capability. Return the server's reply.
-                ///     See https://www.greenend.org.uk/rjk/tech/smtpreplies.html
-                /// </summary>
-                public static Task<(bool IsSuccess, string Reason)> StartTLScheckExAsync(string server, int port) {
-                    ISmtpConnector connector = null;
-                    try {
-                        connector = new SmtpConnector(server, port, false);
-                    } catch (Exception ex) {
-                        return Task.FromResult((false, ex.Message));
-                    }
-
-                    return DoStartTlsCheckExAsync(connector);
-                }
-        */
-
-        /// <summary>
-        ///     Validate passed credential against an SMTP server. Return "true", if all ok.
-        /// </summary>
-        /// <param name="login"></param>
-        /// <param name="password"></param>
-        /// <param name="server"></param>
-        /// <param name="port"></param>
-        /// <param name="options"></param>
-        public static bool ValidateCredentials(string login, string password, string server, int port, SecureSocketMode options) {
-            return ValidateCredentials(login, password, server, port, options, out _);
-        }
-
-        /// <summary>
-        ///     Validate passed credential against an SMTP server. Return "true", if all ok.
-        /// </summary>
-        /// <param name="login"></param>
-        /// <param name="password"></param>
-        /// <param name="server"></param>
-        /// <param name="port"></param>
-        /// <param name="secureMode"></param>
-        /// <param name="reason">Server return info</param>
-        public static bool ValidateCredentials(string login, string password, string server, int port, SecureSocketMode secureMode, out string reason) {
-            ISmtpConnector connector;
-            try {
-                switch (secureMode) {
-                    case SecureSocketMode.None:
-                        connector = new SmtpConnector(server, port, false);
-                        if (!DoEHLOcheck(connector, out reason)) return false;
-                        break;
-                    case SecureSocketMode.SslOnConnect:
-                        connector = new SmtpConnector(server, port, true);
-                        connector.AuthenticateAsClient();
-                        if (!DoEHLOcheck(connector, out reason)) return false;
-                        break;
-                    case SecureSocketMode.StartTls:
-                        connector = new SmtpConnector(server, port, false);
-                        if (!DoStartTlsCheck(connector, out reason)) return false;
-                        break;
-                    default:
-                        throw new NotSupportedException(secureMode.ToString());
                 }
             } catch (Exception ex) {
                 reason = ex.Message;
                 return false;
+            } finally {
+                connector?.Dispose();
             }
-
-            //if (!DoEHLOcheck(connector, out reason)) return false;
-
-            connector.SendData($"AUTH LOGIN{SmtpConnector.EOF}");
-            if (!connector.CheckResponse(334, out reason)) {
-                return false;
-            }
-
-            connector.SendData(Convert.ToBase64String(Encoding.UTF8.GetBytes($"{login}")) + SmtpConnector.EOF);
-            if (!connector.CheckResponse(334, out reason)) {
-                return false;
-            }
-
-            connector.SendData(Convert.ToBase64String(Encoding.UTF8.GetBytes($"{password}")) + SmtpConnector.EOF);
-            return connector.CheckResponse(235, out reason);
         }
 
         /// <summary>
-        ///     Validate passed credential against an SMTP server. Return "true", if all ok.
+        ///     Reads the initial 220 connection greeting from the SMTP server.
         /// </summary>
-        /// <param name="login"></param>
-        /// <param name="password"></param>
-        /// <param name="server"></param>
-        /// <param name="port"></param>
-        /// <param name="secureMode"></param>
-        public static async Task<bool> ValidateCredentialsAsync(string login, string password, string server, int port, SecureSocketMode secureMode) {
-            return (await ValidateCredentialsExAsync(login, password, server, port, secureMode).ConfigureAwait(false)).IsSuccess;
+        private static bool ReadGreeting(ISmtpConnector connector, out string reason) {
+            return connector.CheckResponse(220, out reason);
         }
 
         /// <summary>
-        ///     Validate passed credential against an SMTP server. Return "true", if all ok.
+        ///     Sends the EHLO command using the local machine's HostName (RFC 2821 compliant) 
+        ///     and checks for a 250 success response.
         /// </summary>
-        /// <param name="login"></param>
-        /// <param name="password"></param>
-        /// <param name="server"></param>
-        /// <param name="port"></param>
-        /// <param name="secureMode"></param>
-        public static async Task<(bool IsSuccess, string Reason)> ValidateCredentialsExAsync(string login, string password, string server, int port, SecureSocketMode secureMode) {
-            ISmtpConnector? connector = null;
-            (bool IsSuccess, string Reason) output = (false, string.Empty);
-
-            try {
-                switch (secureMode) {
-                    case SecureSocketMode.None:
-                        connector = new SmtpConnector(smtpServerAddress: server, port: port, enableSsl: false);
-                        output = await DoEHLOcheckAsync(connector);
-                        if (!output.IsSuccess) return output;
-                        break;
-                    case SecureSocketMode.SslOnConnect:
-                        connector = new SmtpConnector(smtpServerAddress: server, port: port, enableSsl: true);
-                        await connector.AuthenticateAsClientAsync();
-                        output = await DoEHLOcheckAsync(connector);
-                        if (!output.IsSuccess) return output;
-                        break;
-                    case SecureSocketMode.StartTls:
-                        connector = new SmtpConnector(smtpServerAddress: server, port: port, enableSsl: false);
-                        output = await DoStartTlsCheckExAsync(connector);
-                        if (!output.IsSuccess) return output;
-                        break;
-                    default:
-                        throw new NotSupportedException(secureMode.ToString());
-                }
-            } catch (Exception ex) {
-                return (false, ex.Message);
-            }
-
-            //output = await DoEHLOcheckAsync(connector);
-            //if (!output.IsSuccess) return output;
-
-            await connector.SendDataAsync($"AUTH LOGIN{SmtpConnector.EOF}").ConfigureAwait(false);
-            output = await connector.CheckResponseExAsync(334).ConfigureAwait(false);
-            if (!output.IsSuccess) return output;
-
-            await connector.SendDataAsync(Convert.ToBase64String(Encoding.UTF8.GetBytes($"{login}")) + SmtpConnector.EOF).ConfigureAwait(false);
-            output = await connector.CheckResponseExAsync(334).ConfigureAwait(false);
-            if (!output.IsSuccess) return output;
-
-            await connector.SendDataAsync(Convert.ToBase64String(Encoding.UTF8.GetBytes($"{password}")) + SmtpConnector.EOF).ConfigureAwait(false);
-            return await connector.CheckResponseExAsync(235).ConfigureAwait(false);
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        private static bool DoEHLOcheck(ISmtpConnector connector, out string reason) {
-            if (!connector.CheckResponse(220, out reason)) return false;
-
-            connector.SendData($"EHLO {Dns.GetHostName()}{SmtpConnector.EOF}");
+        private static bool SendEhlo(ISmtpConnector connector, out string reason) {
+            string hostName = Dns.GetHostName();
+            connector.WriteLine($"EHLO {hostName}");
             return connector.CheckResponse(250, out reason);
         }
 
         /// <summary>
-        ///
+        ///     Validates SMTP credentials by connecting, establishing a secure channel if required,
         /// </summary>
-        private static async Task<(bool IsSuccess, string Reason)> DoEHLOcheckAsync(ISmtpConnector connector) {
-            var output = await connector.CheckResponseExAsync(220).ConfigureAwait(false);
-            if (!output.IsSuccess) return output;
-
-            await connector.SendDataAsync($"EHLO {Dns.GetHostName()}{SmtpConnector.EOF}").ConfigureAwait(false);
-            return await connector.CheckResponseExAsync(250).ConfigureAwait(false);
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        private static bool DoStartTlsCheck(ISmtpConnector connector, out string reason) {
-            if (!DoEHLOcheck(connector, out reason)) return false;
-
-            //SmtpCapabilities capabilities = CheckSmtpCapabilities(output.responseData);
-            //if ((capabilities & SmtpCapabilities.StartTLS) == 0)
-            //    return (false, $"STARTTLS is not supported by the SMTP server. Server response was:\n:{output.responseData}");
-
-            connector.SendData($"STARTTLS{SmtpConnector.EOF}");
-            if (!connector.CheckResponse(220, out reason)) return false;
-
+        /// <param name="userName">The authentication username.</param>
+        /// <param name="password">The authentication password.</param>
+        /// <param name="server">The SMTP server hostname or IP address.</param>
+        /// <param name="port">The SMTP server port (e.g., 25, 465, 587).</param>
+        /// <param name="secureMode">The security mode to use for the connection.</param>
+        /// <param name="reason">The raw response or error message from the server.</param>
+        /// <returns>True if authentication succeeded; otherwise, false.</returns>
+        public static bool ValidateCredentials(string userName, string password, string server, int port, SecureSocketMode secureMode, out string reason) {
+            ISmtpConnector connector = null;
             try {
-                connector.UpgradeToSsl();
+                switch (secureMode) {
+                    case SecureSocketMode.None:
+                        connector = new SmtpConnector(server, port, enableSsl: false);
+                        if (!ReadGreeting(connector, out reason)) return false;
+                        if (!SendEhlo(connector, out reason)) return false;
+                        break;
+
+                    case SecureSocketMode.SslOnConnect:
+                        connector = new SmtpConnector(server, port, enableSsl: true);
+                        connector.AuthenticateAsClient();
+                        if (!ReadGreeting(connector, out reason)) return false;
+                        if (!SendEhlo(connector, out reason)) return false;
+                        break;
+
+                    case SecureSocketMode.StartTlsWhenAvailable:
+                    case SecureSocketMode.StartTls:
+                        connector = new SmtpConnector(server, port, enableSsl: false);
+                        
+                        if (!ReadGreeting(connector, out reason)) return false;
+                        if (!SendEhlo(connector, out reason)) return false;
+
+                        if (GetSmtpCapabilities(reason).HasFlag(SmtpCapabilities.StartTLS)) {
+                            connector.StartTls();
+                            if (!SendEhlo(connector, out reason)) return false;
+                        } else if (secureMode == SecureSocketMode.StartTls) {
+                            reason = "STARTTLS is not available";
+                            return false;
+                        }
+                        break;
+
+                    default:
+                        reason = "Unknown SecureSocketMode";
+                        return false;
+                }
+
+                // Authentication phase (AUTH LOGIN)
+                connector.WriteLine("AUTH LOGIN");
+                if (!connector.CheckResponse(334, out reason)) return false;
+
+                connector.WriteLine(Convert.ToBase64String(Encoding.UTF8.GetBytes(userName)));
+                if (!connector.CheckResponse(334, out reason)) return false;
+
+                connector.WriteLine(Convert.ToBase64String(Encoding.UTF8.GetBytes(password)));
+                return connector.CheckResponse(235, out reason);
+
             } catch (Exception ex) {
-                reason = $"Cannot upgrade connection to TLS: {ex.Message}";
+                reason = ex.Message;
                 return false;
+            } finally {
+                connector?.Dispose();
             }
-
-            connector.SendData($"EHLO {Dns.GetHostName()}{SmtpConnector.EOF}");
-            var isSuccess = connector.CheckResponse(250, out reason);
-            reason = isSuccess
-                ? $"Upgrade to TLS is successfully. Server replied to new EHLO with: {reason}"
-                : $"Upgrade to TLS was successfully but server replied to new EHLO with: {reason}";
-            return isSuccess;
         }
 
         /// <summary>
-        /// 
+        ///     Parses the raw EHLO response string to determine the server's supported capabilities.
         /// </summary>
-        private static async Task<(bool IsSuccess, string Reason)> DoStartTlsCheckExAsync(ISmtpConnector connector) {
-            var output = await DoEHLOcheckAsync(connector);
-            if (!output.IsSuccess) return output;
+        /// <param name="ehloResponse">The raw response string received after sending EHLO.</param>
+        /// <returns>A bitwise enum of the parsed <see cref="SmtpCapabilities"/>.</returns>
+        public static SmtpCapabilities GetSmtpCapabilities(string ehloResponse) {
+            var capabilities = SmtpCapabilities.None;
+            var lines = ehloResponse.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries);
 
-            //SmtpCapabilities capabilities = CheckSmtpCapabilities(output.responseData);
-            //if ((capabilities & SmtpCapabilities.StartTLS) == 0)
-            //    return (false, $"STARTTLS is not supported by the SMTP server. Server response was:\n:{output.responseData}");
+            // Skip the first line which is just the server greeting "250-smtp.server.com Hello..."
+            for (int i = 1; i < lines.Length; i++) {
+                var line = lines[i];
+                if (line.Length < 4) continue;
 
-            await connector.SendDataAsync($"STARTTLS{SmtpConnector.EOF}").ConfigureAwait(false);
-            output = await connector.CheckResponseExAsync(220).ConfigureAwait(false);
-            if (!output.IsSuccess) return output;
+                // Capabilities usually start after the "250-" or "250 " prefix
+                var capability = line.Substring(4).Trim().ToUpperInvariant();
 
-            try {
-                await connector.UpgradeToSslAsync();
-            } catch (Exception ex) {
-                return (false, $"Cannot upgrade connection to TLS: {ex.Message}");
-            }
-
-            // do again the greatings
-            await connector.SendDataAsync($"EHLO {Dns.GetHostName()}{SmtpConnector.EOF}").ConfigureAwait(false);
-            output = await connector.CheckResponseExAsync(250).ConfigureAwait(false);
-            return (
-                IsSuccess: output.IsSuccess,
-                Reason: output.IsSuccess
-                            ? $"Upgrade to TLS is successfully. Server replied to new EHLO with: {output.Reason}"
-                            : $"Upgrade to TLS was successfully but server replied to new EHLO with: {output.Reason}");
-        }
-
-        private static SmtpCapabilities CheckSmtpCapabilities(string responseData) {
-            SmtpCapabilities capabilities = SmtpCapabilities.None;
-
-            var lines = responseData.Split('\n');
-            for (int i = 0; i < lines.Length; i++) {
-                // Outlook.com replies with "250-8bitmime" instead of "250-8BITMIME" (strangely, it correctly capitalizes all other extensions...)
-                var capability = lines[i].Trim().ToUpperInvariant();
-
-                if (capability.StartsWith("AUTH", StringComparison.Ordinal) || capability.StartsWith("X-EXPS", StringComparison.Ordinal)) {
-                    int index = capability[0] == 'A' ? "AUTH".Length : "X-EXPS".Length;
-
-                    if (index < capability.Length && (capability[index] == ' ' || capability[index] == '=')) {
-                        capabilities |= SmtpCapabilities.Authentication;
-                        index++;
-
-                        // TODO: queste linee?
-                        //var mechanisms = capability.Substring(index);
-                        //foreach (var mechanism in mechanisms.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries))
-                        //    AuthenticationMechanisms.Add(mechanism);
-                    }
+                if (capability.StartsWith("AUTH", StringComparison.Ordinal)) {
+                    capabilities |= SmtpCapabilities.Authentication;
                 } else if (capability.StartsWith("SIZE", StringComparison.Ordinal)) {
                     capabilities |= SmtpCapabilities.Size;
                 } else {
@@ -368,10 +204,228 @@ namespace GPSoftware.Core.Emails {
                         case "REQUIRETLS": capabilities |= SmtpCapabilities.RequireTLS; break;
                     }
                 }
-            }   // for ...
+            }
 
             return capabilities;
         }
 
+        // =========================================================================================
+        // MODERN ASYNC EXTENSIONS
+        // =========================================================================================
+
+        /// <summary>
+        ///     Asynchronously connects to a mail server, reads the greeting, and sends an EHLO command. 
+        ///     Returns true if the server replies positively.
+        /// </summary>
+        public static async Task<bool> EHLOcheckAsync(string server, int port, SecureSocketMode secureMode) {
+            var result = await EHLOcheckExAsync(server, port, secureMode).ConfigureAwait(false);
+            return result.IsSuccess;
+        }
+
+        /// <summary>
+        ///     Asynchronously connects to a mail server, reads the greeting, and sends an EHLO command. 
+        ///     Returns the success status and the server's reply reason.
+        /// </summary>
+        public static async Task<(bool IsSuccess, string Reason)> EHLOcheckExAsync(string server, int port, SecureSocketMode secureMode) {
+            ISmtpConnector connector = null;
+            try {
+                switch (secureMode) {
+                    case SecureSocketMode.None:
+                        connector = new SmtpConnector(server, port, enableSsl: false);
+                        
+                        var greetNone = await ReadGreetingAsync(connector).ConfigureAwait(false);
+                        if (!greetNone.IsSuccess) return greetNone;
+                        
+                        return await SendEhloAsync(connector).ConfigureAwait(false);
+
+                    case SecureSocketMode.SslOnConnect:
+                        connector = new SmtpConnector(server, port, enableSsl: true);
+                        await connector.AuthenticateAsClientAsync().ConfigureAwait(false);
+                        
+                        var greetSsl = await ReadGreetingAsync(connector).ConfigureAwait(false);
+                        if (!greetSsl.IsSuccess) return greetSsl;
+                        
+                        return await SendEhloAsync(connector).ConfigureAwait(false);
+
+                    case SecureSocketMode.StartTlsWhenAvailable:
+                    case SecureSocketMode.StartTls:
+                        connector = new SmtpConnector(server, port, enableSsl: false);
+                        
+                        var greetTls = await ReadGreetingAsync(connector).ConfigureAwait(false);
+                        if (!greetTls.IsSuccess) return greetTls;
+                        
+                        var ehloTls = await SendEhloAsync(connector).ConfigureAwait(false);
+                        if (!ehloTls.IsSuccess) return ehloTls;
+
+                        if (GetSmtpCapabilities(ehloTls.Reason).HasFlag(SmtpCapabilities.StartTLS)) {
+                            await connector.StartTlsAsync().ConfigureAwait(false);
+                            return await SendEhloAsync(connector).ConfigureAwait(false); 
+                        } else {
+                            if (secureMode == SecureSocketMode.StartTls) {
+                                return (false, "STARTTLS is not available on this server");
+                            } else {
+                                return (true, ehloTls.Reason);
+                            }
+                        }
+
+                    default:
+                        return (false, "Unknown SecureSocketMode");
+                }
+            } catch (Exception ex) {
+                return (false, ex.Message);
+            } finally {
+                connector?.Dispose();
+            }
+        }
+
+        /// <summary>
+        ///     Asynchronously validates SMTP credentials natively using the ISmtpConnector async methods.
+        ///     This prevents Thread Pool starvation by fully yielding the thread during network I/O.
+        /// </summary>
+        public static async Task<bool> ValidateCredentialsAsync(string userName, string password, string server, int port, SecureSocketMode secureMode) {
+            ISmtpConnector connector = null;
+            try {
+                switch (secureMode) {
+                    case SecureSocketMode.None:
+                        connector = new SmtpConnector(server, port, enableSsl: false);
+                        if (!(await ReadGreetingAsync(connector).ConfigureAwait(false)).IsSuccess) return false;
+                        if (!(await SendEhloAsync(connector).ConfigureAwait(false)).IsSuccess) return false;
+                        break;
+
+                    case SecureSocketMode.SslOnConnect:
+                        connector = new SmtpConnector(server, port, enableSsl: true);
+                        await connector.AuthenticateAsClientAsync().ConfigureAwait(false);
+                        if (!(await ReadGreetingAsync(connector).ConfigureAwait(false)).IsSuccess) return false;
+                        if (!(await SendEhloAsync(connector).ConfigureAwait(false)).IsSuccess) return false;
+                        break;
+
+                    case SecureSocketMode.StartTlsWhenAvailable:
+                    case SecureSocketMode.StartTls:
+                        connector = new SmtpConnector(server, port, enableSsl: false);
+                        
+                        if (!(await ReadGreetingAsync(connector).ConfigureAwait(false)).IsSuccess) return false;
+                        
+                        var ehloResult = await SendEhloAsync(connector).ConfigureAwait(false);
+                        if (!ehloResult.IsSuccess) return false;
+
+                        if (GetSmtpCapabilities(ehloResult.Reason).HasFlag(SmtpCapabilities.StartTLS)) {
+                            await connector.StartTlsAsync().ConfigureAwait(false);
+                            if (!(await SendEhloAsync(connector).ConfigureAwait(false)).IsSuccess) return false;
+                        } else if (secureMode == SecureSocketMode.StartTls) {
+                            return false; // STARTTLS is required but not available
+                        }
+                        break;
+
+                    default:
+                        return false;
+                }
+
+                // Authentication phase (AUTH LOGIN)
+                await connector.WriteLineAsync("AUTH LOGIN").ConfigureAwait(false);
+                if (!await connector.CheckResponseAsync(334).ConfigureAwait(false)) return false;
+
+                await connector.WriteLineAsync(Convert.ToBase64String(Encoding.UTF8.GetBytes(userName))).ConfigureAwait(false);
+                if (!await connector.CheckResponseAsync(334).ConfigureAwait(false)) return false;
+
+                await connector.WriteLineAsync(Convert.ToBase64String(Encoding.UTF8.GetBytes(password))).ConfigureAwait(false);
+                return await connector.CheckResponseAsync(235).ConfigureAwait(false);
+
+            } catch {
+                return false;
+            } finally {
+                connector?.Dispose();
+            }
+        }
+
+        private static async Task<(bool IsSuccess, string Reason)> ReadGreetingAsync(ISmtpConnector connector) {
+            return await connector.CheckResponseExAsync(220).ConfigureAwait(false);
+        }
+
+        private static async Task<(bool IsSuccess, string Reason)> SendEhloAsync(ISmtpConnector connector) {
+            string hostName = Dns.GetHostName();
+            await connector.WriteLineAsync($"EHLO {hostName}").ConfigureAwait(false);
+            return await connector.CheckResponseExAsync(250).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        ///     Sends an email asynchronously with a strict hard-coded timeout safety wrapper.
+        ///     This bypasses the architectural bug where SmtpClient.SendMailAsync ignores the Timeout property.
+        /// </summary>
+        /// <param name="smtpClient">The pre-configured SmtpClient instance.</param>
+        /// <param name="mailMessage">The MailMessage object to send.</param>
+        /// <param name="timeoutMilliseconds">The maximum allowed duration in milliseconds before forcing an abort.</param>
+        public static async Task SendMailWithTimeoutAsync(this SmtpClient smtpClient, MailMessage mailMessage, int timeoutMilliseconds) {
+            if (smtpClient == null) throw new ArgumentNullException(nameof(smtpClient));
+            if (mailMessage == null) throw new ArgumentNullException(nameof(mailMessage));
+
+            // Ensure the synchronous timeout property is also set as a primary fallback
+            smtpClient.Timeout = timeoutMilliseconds;
+
+#if NET6_0_OR_GREATER
+            // In modern .NET 6+, we use the built-in WaitAsync for elegant and native timeouts
+            using var cts = new CancellationTokenSource(timeoutMilliseconds);
+            try {
+                await smtpClient.SendMailAsync(mailMessage).WaitAsync(cts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                smtpClient.Dispose(); // Force-close the hanging underlying TCP socket
+                throw new TimeoutException($"SMTP send operation timed out after {timeoutMilliseconds}ms.");
+            }
+#else
+            // Legacy .NET 4.7.2 fallback using Task.WhenAny to enforce timeout safely
+            var sendTask = smtpClient.SendMailAsync(mailMessage);
+            var delayTask = Task.Delay(timeoutMilliseconds);
+
+            var completedTask = await Task.WhenAny(sendTask, delayTask).ConfigureAwait(false);
+
+            if (completedTask == delayTask) {
+                // Brutally dispose the SmtpClient to force-close the underlying TCP socket connection immediately
+                smtpClient.Dispose();
+                throw new TimeoutException($"SMTP send operation timed out after {timeoutMilliseconds}ms.");
+            }
+
+            // Await the actual send task to correctly propagate any network/authentication exceptions
+            await sendTask.ConfigureAwait(false);
+#endif
+        }
+
+        /// <summary>
+        ///     Safely checks if the remote SMTP server is reachable via raw TCP connection within a specified timeout.
+        /// </summary>
+        /// <param name="host">The SMTP server hostname or IP address.</param>
+        /// <param name="port">The SMTP server port (e.g., 25, 465, 587).</param>
+        /// <param name="timeoutMilliseconds">The connection timeout limit in milliseconds.</param>
+        /// <returns>True if the connection was established successfully; otherwise, false.</returns>
+        public static async Task<bool> RawPingSmtpServerAsync(string host, int port, int timeoutMilliseconds) {
+            if (string.IsNullOrWhiteSpace(host)) return false;
+
+            try {
+                using (var tcpClient = new TcpClient()) {
+#if NET6_0_OR_GREATER
+                    // Modern .NET 6+ implementation uses CancellationToken directly on the socket
+                    using var cts = new CancellationTokenSource(timeoutMilliseconds);
+                    await tcpClient.ConnectAsync(host, port, cts.Token).ConfigureAwait(false);
+                    return tcpClient.Connected;
+#else
+                    // Legacy .NET 4.7.2 fallback using Task.WhenAny to enforce timeout safely
+                    var connectTask = tcpClient.ConnectAsync(host, port);
+                    var delayTask = Task.Delay(timeoutMilliseconds);
+
+                    var completedTask = await Task.WhenAny(connectTask, delayTask).ConfigureAwait(false);
+
+                    if (completedTask == delayTask) {
+                        return false; // Connection attempt timed out
+                    }
+
+                    // Propagate potential connection exceptions (e.g. SocketException)
+                    await connectTask.ConfigureAwait(false);
+                    return tcpClient.Connected;
+#endif
+                }
+            } catch {
+                // Connection failed due to network unreachable, firewall blocking, or timeout exception
+                return false; 
+            }
+        }
     }
 }

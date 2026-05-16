@@ -36,47 +36,44 @@ namespace GPSoftware.Core.Tests.Emails {
         }
 
         public void Dispose() {
+            // Gracefully stop the server after tests
             _cancellationTokenSource.Cancel();
             try {
                 _serverTask.Wait(TimeSpan.FromSeconds(2));
             }
-            catch { /* Ignore cancellation errors */ }
+            catch {
+                // Ignore task cancellation exceptions
+            }
             _cancellationTokenSource.Dispose();
         }
 
+        // =======================================================================
+        // SYNCHRONOUS TESTS
+        // =======================================================================
+
         [Fact]
-        public void EHLOcheck_ReturnsTrue_WithMockServer() {
+        public void EHLOcheck_ReturnsTrue_OnValidServer() {
             // Act
             bool result = SmtpHelper.EHLOcheck("127.0.0.1", TEST_PORT, SecureSocketMode.None, out string reason);
 
             // Assert
             result.ShouldBe(true, reason);
-            reason.ShouldContain("250"); // Standard success code
+            reason.ShouldContain("250");
         }
 
         [Fact]
-        public void EHLOcheck_ReturnsFalse_WithInvalidServer() {
-            // Act - Trying to connect to a non-existent port
-            bool result = SmtpHelper.EHLOcheck("127.0.0.1", 9999, SecureSocketMode.None, out string reason);
+        public void EHLOcheck_ReturnsFalse_OnInvalidPort() {
+            // Act
+            bool result = SmtpHelper.EHLOcheck("127.0.0.1", 12345, SecureSocketMode.None, out string reason);
 
             // Assert
             result.ShouldBe(false);
-            reason.ShouldNotBeNullOrEmpty();
-        }
-
-        [Fact]
-        public async Task EHLOcheckExAsync_ReturnsTrue_WithMockServer() {
-            // Act
-            var result = await SmtpHelper.EHLOcheckExAsync("127.0.0.1", TEST_PORT, SecureSocketMode.None);
-
-            // Assert
-            result.IsSuccess.ShouldBe(true, result.Reason);
+            reason.ShouldNotBeNullOrWhiteSpace(); // Should contain the exception message
         }
 
         [Fact]
         public void ValidateCredentials_ReturnsTrue_WithCorrectCredentials() {
             // Act
-            // "testuser" and "testpass" are hardcoded in the SimpleAuthenticator class below
             bool result = SmtpHelper.ValidateCredentials("testuser", "testpass", "127.0.0.1", TEST_PORT, SecureSocketMode.None, out string reason);
 
             // Assert
@@ -95,6 +92,29 @@ namespace GPSoftware.Core.Tests.Emails {
             reason.ShouldContain("535");
         }
 
+        // =======================================================================
+        // ASYNCHRONOUS TESTS (NEW)
+        // =======================================================================
+
+        [Fact]
+        public async Task EHLOcheckAsync_ReturnsTrue_OnValidServer() {
+            // Act
+            bool result = await SmtpHelper.EHLOcheckAsync("127.0.0.1", TEST_PORT, SecureSocketMode.None);
+
+            // Assert
+            result.ShouldBe(true);
+        }
+
+        [Fact]
+        public async Task EHLOcheckExAsync_ReturnsTrueAndReason_OnValidServer() {
+            // Act
+            var result = await SmtpHelper.EHLOcheckExAsync("127.0.0.1", TEST_PORT, SecureSocketMode.None);
+
+            // Assert
+            result.IsSuccess.ShouldBe(true, result.Reason);
+            result.Reason.ShouldContain("250");
+        }
+
         [Fact]
         public async Task ValidateCredentialsAsync_ReturnsTrue_WithCorrectCredentials() {
             // Act
@@ -103,6 +123,37 @@ namespace GPSoftware.Core.Tests.Emails {
             // Assert
             result.ShouldBe(true);
         }
+
+        [Fact]
+        public async Task ValidateCredentialsAsync_ReturnsFalse_WithWrongPassword() {
+            // Act
+            bool result = await SmtpHelper.ValidateCredentialsAsync("testuser", "WRONGPASS", "127.0.0.1", TEST_PORT, SecureSocketMode.None);
+
+            // Assert
+            result.ShouldBe(false);
+        }
+
+        [Fact]
+        public async Task RawPingSmtpServerAsync_ReturnsTrue_OnValidServer() {
+            // Act (Ping with a 2 seconds timeout)
+            bool result = await SmtpHelper.RawPingSmtpServerAsync("127.0.0.1", TEST_PORT, 2000);
+
+            // Assert
+            result.ShouldBe(true);
+        }
+
+        [Fact]
+        public async Task RawPingSmtpServerAsync_ReturnsFalse_OnInvalidServer() {
+            // Act (Ping an invalid port with a 100ms timeout)
+            bool result = await SmtpHelper.RawPingSmtpServerAsync("127.0.0.1", 12345, 100);
+
+            // Assert
+            result.ShouldBe(false);
+        }
+
+        // =======================================================================
+        // MOCK AUTHENTICATOR
+        // =======================================================================
 
         /// <summary>
         /// Simple authenticator class for the Mock Server.

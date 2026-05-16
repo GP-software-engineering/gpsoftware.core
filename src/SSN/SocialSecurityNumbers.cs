@@ -1,6 +1,5 @@
-﻿using System;
 using System.Collections.Generic;
-using System.Numerics; // Required for BigInteger (for French INSEE)
+using System.Numerics;
 using System.Text.RegularExpressions;
 
 namespace GPSoftware.Core.SSN {
@@ -19,21 +18,10 @@ namespace GPSoftware.Core.SSN {
             {'U', 16}, {'V', 10}, {'W', 22}, {'X', 25}, {'Y', 24}, {'Z', 23}
         };
 
-        private static readonly Dictionary<char, int> CfOmocodiaToDigitMap = new Dictionary<char, int> {
-            {'L', 0}, {'M', 1}, {'N', 2}, {'P', 3}, {'Q', 4}, {'R', 5}, {'S', 6}, {'T', 7}, {'U', 8}, {'V', 9}
-        };
-
-        // Zero-indexed positions in the first 15 characters of an Italian CF that are normally numeric
-        // and can contain omocodia replacement letters (L-V).
-        // Corresponds to: Year (6,7), Day (9,10), PlaceCode Numerals (12,13,14).
-        private static readonly HashSet<int> CfOmocodiaAffectedPositions = new HashSet<int> { 6, 7, 9, 10, 12, 13, 14 };
-
         /// <summary>
         /// Validates an Italian Codice Fiscale (CF).
-        /// Checks format and control character. Does not validate date or place code against databases.
+        /// Checks format, omocodia, and control character.
         /// </summary>
-        /// <param name="cfInput">The Codice Fiscale string. Can contain spaces.</param>
-        /// <returns>True if formally correct, otherwise false.</returns>
         public static bool IsValidCodiceFiscale(string cfInput) {
             if (string.IsNullOrWhiteSpace(cfInput)) {
                 return false;
@@ -45,9 +33,6 @@ namespace GPSoftware.Core.SSN {
                 return false;
             }
 
-            // Regex for CF structure: LLLLLL NN L NN L NNN C (L=Letter, N=NumericOrOmocodiaLetter for designated spots)
-            // Corresponds to: Surname(3 L), Name(3 L), Year(2 N/Omo), Month(1 L), Day(2 N/Omo), Place(1L + 3 N/Omo), Control(1 L)
-            // Adjusted for C# (no need to escape A-Z, 0-9 inside character groups as much)
             const string cfPattern = @"^[A-Z]{6}[A-Z0-9LMNPQRSTUV]{2}[ABCDEHLMPRST]{1}[A-Z0-9LMNPQRSTUV]{2}[A-Z]{1}[A-Z0-9LMNPQRSTUV]{3}[A-Z]{1}$";
             if (!Regex.IsMatch(cleanedCf, cfPattern)) {
                 return false;
@@ -58,33 +43,24 @@ namespace GPSoftware.Core.SSN {
 
             for (int i = 0; i < 15; i++) {
                 char currentChar = first15Chars[i];
-                char charForLookup = currentChar; // char to use for map lookups, may be converted from omocodia
-
-                // Handle omocodia: if in a numeric-expected field and it's an omocodia letter,
-                // convert to its digit char representation for map lookup
-                if (CfOmocodiaAffectedPositions.Contains(i) && CfOmocodiaToDigitMap.TryGetValue(currentChar, out int digitEquivalent)) {
-                    charForLookup = digitEquivalent.ToString()[0]; // Convert int digit to char '0'-'9'
-                }
-
                 int? charValue = null;
 
-                if ((i + 1) % 2 != 0) // Odd positions (1st, 3rd, ..., 15th)
+                if ((i + 1) % 2 != 0) // Posizioni dispari
                 {
-                    if (CfOddCharsMap.TryGetValue(charForLookup, out int oddVal)) {
+                    if (CfOddCharsMap.TryGetValue(currentChar, out int oddVal)) {
                         charValue = oddVal;
                     }
-                } else // Even positions (2nd, 4th, ..., 14th)
+                } else // Posizioni pari
                   {
-                    if (charForLookup >= '0' && charForLookup <= '9') {
-                        charValue = int.Parse(charForLookup.ToString());
-                    } else if (charForLookup >= 'A' && charForLookup <= 'Z') // Letters A-Z
-                      {
-                        charValue = charForLookup - 'A';
+                    if (currentChar >= '0' && currentChar <= '9') {
+                        charValue = int.Parse(currentChar.ToString());
+                    } else if (currentChar >= 'A' && currentChar <= 'Z') {
+                        charValue = currentChar - 'A';
                     }
                 }
 
                 if (charValue == null) {
-                    return false; // Character not valid in its position for checksum
+                    return false;
                 }
                 sum += charValue.Value;
             }
@@ -104,8 +80,6 @@ namespace GPSoftware.Core.SSN {
         /// Validates a Swiss AVS (AHV) number (new 13-digit format - AHVN13/NAVS13).
         /// Checks format, "756" prefix, and EAN-13 checksum.
         /// </summary>
-        /// <param name="avsInput">The Swiss AVS number string. Can contain spaces or dots.</param>
-        /// <returns>True if formally correct, otherwise false.</returns>
         public static bool IsValidSwissAVS(string avsInput) {
             if (string.IsNullOrWhiteSpace(avsInput)) {
                 return false;
@@ -118,15 +92,14 @@ namespace GPSoftware.Core.SSN {
             }
 
             if (!int.TryParse(cleanedAvs[12].ToString(), out int actualCheckDigit)) {
-                return false; // Should not happen if regex passed
+                return false;
             }
 
             int sum = 0;
             for (int i = 0; i < 12; i++) {
                 if (!int.TryParse(cleanedAvs[i].ToString(), out int digit)) {
-                    return false; // Should not happen
+                    return false;
                 }
-                // Apply EAN-13 weights: 1 for odd positions (1st, 3rd,... which are index 0, 2,...), 3 for even positions
                 sum += digit * ((i % 2 == 0) ? 1 : 3);
             }
 
@@ -143,14 +116,12 @@ namespace GPSoftware.Core.SSN {
         /// Validates an Austrian Social Insurance Number (SVNR).
         /// Supports SVNRs written as a plain 10-digit string or with common delimiters.
         /// </summary>
-        /// <param name="svnrInput">The SVNR string. Can contain spaces, hyphens, or slashes.</param>
-        /// <returns>True if formally correct, otherwise false.</returns>
         public static bool IsValidAustrianSVNR(string svnrInput) {
             if (string.IsNullOrWhiteSpace(svnrInput)) {
                 return false;
             }
 
-            string cleanedSvnr = Regex.Replace(svnrInput, @"[-\/\s]", "");
+            string cleanedSvnr = Regex.Replace(svnrInput.ToUpper(), @"[-\/\s]", "");
 
             if (!Regex.IsMatch(cleanedSvnr, @"^\d{10}$")) {
                 return false;
@@ -159,7 +130,7 @@ namespace GPSoftware.Core.SSN {
             int[] digits = new int[10];
             for (int i = 0; i < 10; i++) {
                 if (!int.TryParse(cleanedSvnr[i].ToString(), out digits[i])) {
-                    return false; // Should not happen
+                    return false;
                 }
             }
 
@@ -167,7 +138,7 @@ namespace GPSoftware.Core.SSN {
                 digits[0] * 3 +
                 digits[1] * 7 +
                 digits[2] * 9 +
-                // digits[3] is the actualCheckDigit (C), skipped in sum
+                // digits[3] is the check digit
                 digits[4] * 5 +
                 digits[5] * 4 +
                 digits[6] * 8 +
@@ -176,9 +147,13 @@ namespace GPSoftware.Core.SSN {
                 digits[9] * 2;
 
             int remainder = sum % 11;
-            int calculatedCheckDigit = (remainder == 10) ? 0 : remainder;
 
-            return calculatedCheckDigit == digits[3];
+            // In Austria, if the remainder is 10, the SSN is strictly invalid and cannot exist.
+            if (remainder == 10) {
+                return false;
+            }
+
+            return remainder == digits[3];
         }
 
         #endregion
@@ -187,10 +162,8 @@ namespace GPSoftware.Core.SSN {
 
         /// <summary>
         /// Validates a French Social Security Number (INSEE number - NIR).
-        /// Uses BigInteger for accurate modulo on the 13-digit number part.
+        /// Handles Corsica alphanumeric departments (2A, 2B) and uses BigInteger for modulo.
         /// </summary>
-        /// <param name="inseeInput">The INSEE number string. Can contain spaces.</param>
-        /// <returns>True if formally correct, otherwise false.</returns>
         public static bool IsValidFrenchINSEE(string inseeInput) {
             if (string.IsNullOrWhiteSpace(inseeInput)) {
                 return false;
@@ -198,48 +171,149 @@ namespace GPSoftware.Core.SSN {
 
             string cleanedInsee = Regex.Replace(inseeInput.ToUpper(), @"[\s.]", "");
 
-            if (!Regex.IsMatch(cleanedInsee, @"^\d{15}$")) {
+            // Regex updated: 6 digits, then 1 char (0-9, A or B for Corsica), then 8 digits. Total 15.
+            if (!Regex.IsMatch(cleanedInsee, @"^\d{6}[0-9AB]\d{8}$")) {
                 return false;
             }
 
-            // Simplified semantic checks (can be expanded for full strictness)
             char sexDigit = cleanedInsee[0];
-            if (sexDigit != '1' && sexDigit != '2') {
-                // Allowing only common male (1) and female (2) for this validator.
-                // Official specs include other digits for specific cases (3,4,7,8).
-                // Consider if this check should return false or just be a warning.
-            }
-
-            if (!int.TryParse(cleanedInsee.Substring(3, 2), out int month) || (month < 1 || month > 12)) {
-                // Allowing only standard months 01-12. Special codes (>20) exist.
-                // Consider if this check should return false or just be a warning.
+            if (sexDigit != '1' && sexDigit != '2' && sexDigit != '3' && sexDigit != '4' && sexDigit != '7' && sexDigit != '8') {
+                return false;
             }
 
             string numberPartStr = cleanedInsee.Substring(0, 13);
-            string keyPartStr = cleanedInsee.Substring(13, 2); // Corrected from (13,15) to (13,2)
+            string keyPartStr = cleanedInsee.Substring(13, 2);
 
             if (!int.TryParse(keyPartStr, out int keyPartInt)) {
-                return false; // Should not happen if regex passed
+                return false;
             }
 
+            // Replace Corsica departments with their mathematical equivalents for the Modulo 97 calculation
+            string mathCalculationStr = numberPartStr.Replace("2A", "19").Replace("2B", "18");
+
             try {
-                if (!BigInteger.TryParse(numberPartStr, out BigInteger numberBigInt)) {
-                    return false; // Not a valid number string for BigInteger
+                if (!BigInteger.TryParse(mathCalculationStr, out BigInteger numberBigInt)) {
+                    return false;
                 }
 
                 BigInteger remainderBigInt = numberBigInt % new BigInteger(97);
-                int remainder = (int)remainderBigInt; // Safe as remainder is 0-96
+                int remainder = (int)remainderBigInt;
 
                 int calculatedKey = 97 - remainder;
-                // The French key can be 97 if remainder is 0. It is represented as 01-97.
-                // The formula 97 - remainder works directly for this range.
 
                 return calculatedKey == keyPartInt;
-            } catch (Exception ex) // Catch potential errors from BigInteger or parsing
-              {
-                // Log error if necessary: Console.Error.WriteLine($"Error during INSEE validation: {ex.Message}");
+            }
+            catch {
                 return false;
             }
+        }
+
+        #endregion
+
+        #region Spanish NIF / NIE (DNI)
+
+        /// <summary>
+        /// Validates a Spanish NIF (DNI for citizens) or NIE (for foreigners).
+        /// Checks the format and validates the Modulo 23 control character.
+        /// Does not validate CIF (corporate IDs).
+        /// </summary>
+        public static bool IsValidSpanishNIF(string nifInput) {
+            if (string.IsNullOrWhiteSpace(nifInput)) {
+                return false;
+            }
+
+            string cleanedNif = Regex.Replace(nifInput.ToUpper(), @"[\s\-]", "");
+
+            // Matches DNI (8 digits + 1 letter) or NIE (X, Y, Z + 7 digits + 1 letter)
+            if (!Regex.IsMatch(cleanedNif, @"^[XYZ0-9]\d{7}[A-Z]$")) {
+                return false;
+            }
+
+            string numberStr = cleanedNif.Substring(0, 8);
+
+            // Transform foreign resident NIEs to standard numbers to calculate the checksum
+            numberStr = numberStr.Replace('X', '0').Replace('Y', '1').Replace('Z', '2');
+
+            if (!int.TryParse(numberStr, out int number)) {
+                return false;
+            }
+
+            // String of control letters defined by the Spanish government algorithm
+            const string controlLetters = "TRWAGMYFPDXBNJZSQVHLCKE";
+            char expectedLetter = controlLetters[number % 23];
+            char actualLetter = cleanedNif[8];
+
+            return actualLetter == expectedLetter;
+        }
+
+        #endregion
+
+        #region UK National Insurance Number (NINO)
+
+        /// <summary>
+        /// Validates a UK National Insurance Number (NINO).
+        /// Checks specific prefix and format restrictions. 
+        /// Note: The UK NINO relies entirely on structural regex rules and has no mathematical checksum.
+        /// </summary>
+        public static bool IsValidUKNINO(string ninoInput) {
+            if (string.IsNullOrWhiteSpace(ninoInput)) {
+                return false;
+            }
+
+            string cleanedNino = Regex.Replace(ninoInput.ToUpper(), @"[\s\-]", "");
+
+            // UK NINO rules:
+            // 2 letters, 6 digits, 1 letter (A, B, C, or D).
+            // Letters D, F, I, Q, U, V are not used in prefixes. O is additionally skipped in the 2nd letter.
+            // Prefixes BG, GB, NK, KN, TN, NT, ZZ are not allocated by the government.
+            const string ninoPattern = @"^(?!BG|GB|NK|KN|TN|NT|ZZ)[A-CEGHJ-PR-TW-Z][A-CEGHJ-NPR-TW-Z]\d{6}[A-D]$";
+
+            return Regex.IsMatch(cleanedNino, ninoPattern);
+        }
+
+        #endregion
+
+        #region Portuguese NIF
+
+        /// <summary>
+        /// Validates a Portuguese NIF (Número de Identificação Fiscal).
+        /// Identifies formats for both natural persons and entities and validates the Modulo 11 check digit.
+        /// </summary>
+        public static bool IsValidPortugueseNIF(string nifInput) {
+            if (string.IsNullOrWhiteSpace(nifInput)) {
+                return false;
+            }
+
+            string cleanedNif = Regex.Replace(nifInput.ToUpper(), @"[\s\-]", "");
+
+            // People often type the international ISO country code in front (e.g. PT 501 964 843)
+            if (cleanedNif.StartsWith("PT")) {
+                cleanedNif = cleanedNif.Substring(2);
+            }
+
+            if (!Regex.IsMatch(cleanedNif, @"^\d{9}$")) {
+                return false;
+            }
+
+            int[] digits = new int[9];
+            for (int i = 0; i < 9; i++) {
+                digits[i] = cleanedNif[i] - '0';
+            }
+
+            // Calculation based on Modulo 11
+            int sum = 0;
+            for (int i = 0; i < 8; i++) {
+                sum += digits[i] * (9 - i);
+            }
+
+            int expectedCheckDigit = 11 - (sum % 11);
+
+            // Standard Portuguese "quirk" in the algorithm: if the result is 10 or 11, it falls back to 0
+            if (expectedCheckDigit >= 10) {
+                expectedCheckDigit = 0;
+            }
+
+            return expectedCheckDigit == digits[8];
         }
 
         #endregion

@@ -18,67 +18,58 @@ namespace GPSoftware.Core.Emails {
         None = 0,
 
         /// <summary>
-        /// The server supports the <a href="https://tools.ietf.org/html/rfc1870">SIZE</a> extension
-        /// and may have a maximum message size limitation).
+        ///     The server supports the SIZE extension.
         /// </summary>
         Size = 1 << 0,
 
         /// <summary>
-        /// The server supports the <a href="https://tools.ietf.org/html/rfc1891">DSN</a> extension,
-        /// allowing clients to specify which (if any) recipients they would like to receive delivery
-        /// notifications for.
+        ///     The server supports the DSN extension (Delivery Status Notifications).
         /// </summary>
         Dsn = 1 << 1,
 
         /// <summary>
-        /// The server supports the <a href="https://tools.ietf.org/html/rfc2034">ENHANCEDSTATUSCODES</a>
-        /// extension.
+        ///     The server supports the ENHANCEDSTATUSCODES extension.
         /// </summary>
         EnhancedStatusCodes = 1 << 2,
 
         /// <summary>
-        /// The server supports the <a href="https://tools.ietf.org/html/rfc2554">AUTH</a> extension,
-        /// allowing clients to authenticate via supported SASL mechanisms.
+        ///     The server supports the AUTH extension, allowing clients to authenticate.
         /// </summary>
         Authentication = 1 << 3,
 
         /// <summary>
-        /// The server supports the <a href="https://tools.ietf.org/html/rfc2821">8BITMIME</a> extension,
-        /// allowing clients to send messages using the "8bit" Content-Transfer-Encoding.
+        ///     The server supports the 8BITMIME extension.
         /// </summary>
         EightBitMime = 1 << 4,
 
         /// <summary>
-        /// The server supports the <a href="https://tools.ietf.org/html/rfc2920">PIPELINING</a> extension,
-        /// allowing clients to send multiple commands at once in order to reduce round-trip latency.
+        ///     The server supports the PIPELINING extension.
         /// </summary>
         Pipelining = 1 << 5,
 
         /// <summary>
-        /// The server supports the <a href="https://tools.ietf.org/html/rfc3030">BINARYMIME</a> extension.
+        ///     The server supports the BINARYMIME extension.
         /// </summary>
         BinaryMime = 1 << 6,
 
         /// <summary>
-        /// The server supports the <a href="https://tools.ietf.org/html/rfc3030">CHUNKING</a> extension,
-        /// allowing clients to upload messages in chunks.
+        ///     The server supports the CHUNKING extension.
         /// </summary>
         Chunking = 1 << 7,
 
         /// <summary>
-        /// The server supports the <a href="https://tools.ietf.org/html/rfc3207">STARTTLS</a> extension,
-        /// allowing clients to switch to an encrypted SSL/TLS connection after connecting.
+        ///     The server supports the STARTTLS extension, allowing clients to switch to an encrypted connection.
         /// </summary>
         StartTLS = 1 << 8,
 
         /// <summary>
-        /// The server supports the <a href="https://tools.ietf.org/html/rfc6531">SMTPUTF8</a> extension.
+        ///     The server supports the SMTPUTF8 extension.
         /// </summary>
         UTF8 = 1 << 9,
 
         /// <summary>
-        /// The server supports the <a href="https://tools.ietf.org/html/rfc8689">REQUIRETLS</a> extension.
+        ///     The server supports the REQUIRETLS extension.
         /// </summary>
-        RequireTLS = 1 << 10,
+        RequireTLS = 1 << 10
     }
 }

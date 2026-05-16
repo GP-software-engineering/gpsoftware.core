@@ -6,25 +6,33 @@ on:
   pull_request:
     branches: [ "main" ]
 
+env:
+  # Force GitHub Actions to use Node.js 24
+  # Reference: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v6
-    
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4.2.2
+
+    - name: Setup .NET SDKs
+      uses: actions/setup-dotnet@v4.3.0
       with:
-        dotnet-version:
-            8.0.x
-            10.0.x
-        
+        dotnet-version: |
+          6.0.x
+          8.0.x
+          10.0.x
+
     - name: Restore dependencies
       run: dotnet restore
-      
-    - name: Build
-      run: dotnet build --no-restore -c Release
-      
-    - name: Test
-      run: dotnet test --no-build --verbosity normal -c Release
+
+    - name: Build Release
+      run: dotnet build -c Release --no-restore
+
+    - name: Run Tests
+      # Testing on multiple frameworks if the test project supports them
+      run: dotnet test -c Release --no-build --verbosity normal

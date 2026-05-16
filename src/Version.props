@@ -1,8 +1,9 @@
 <Project>
 	<PropertyGroup>
-		<VersionPrefix>3.5.0.1</VersionPrefix>
+		<VersionPrefix>3.6.0</VersionPrefix>
 		<PackageReleaseNotes>
-			- Recompiled to natively include .NET10.
+			- Fixed and improved validation logic for various national identification codes
+            - Fixed and imporved the Smtp testing functionality.
 		</PackageReleaseNotes>
 		<Authors>Gianpiero Caretti</Authors>
 		<Company>GP software engineering</Company>
